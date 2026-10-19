@@ -158,30 +158,65 @@ def test_detect_financial_request_finds_request():
 
 # ---- Risk Engine Tests ----
 
+from engine.risk_engine import calculate_risk_score, classify_threat
+from engine.recommendation_engine import generate_explanation, generate_recommendations
+
 
 def test_classify_threat_low():
     """Scores 0-24 should classify as LOW."""
-    pass
+    assert classify_threat(0) == "LOW"
+    assert classify_threat(15) == "LOW"
+    assert classify_threat(24) == "LOW"
 
 
 def test_classify_threat_medium():
     """Scores 25-49 should classify as MEDIUM."""
-    pass
+    assert classify_threat(25) == "MEDIUM"
+    assert classify_threat(35) == "MEDIUM"
+    assert classify_threat(49) == "MEDIUM"
 
 
 def test_classify_threat_high():
     """Scores 50-74 should classify as HIGH."""
-    pass
+    assert classify_threat(50) == "HIGH"
+    assert classify_threat(65) == "HIGH"
+    assert classify_threat(74) == "HIGH"
 
 
 def test_classify_threat_critical():
     """Scores 75-100 should classify as CRITICAL."""
-    pass
+    assert classify_threat(75) == "CRITICAL"
+    assert classify_threat(90) == "CRITICAL"
+    assert classify_threat(100) == "CRITICAL"
 
 
 def test_risk_score_capped_at_100():
     """Risk score should never exceed 100, even with many indicators."""
-    pass
+    many_indicators = [
+        {"indicator": "ip_address", "triggered": True},        # 25
+        {"indicator": "credential_request", "triggered": True},# 25
+        {"indicator": "financial_request", "triggered": True}, # 25
+        {"indicator": "special_characters", "triggered": True},# 20
+        {"indicator": "threat_language", "triggered": True},   # 20
+        {"indicator": "url_length", "triggered": True}         # 15
+    ]
+    # Total raw weight = 130 -> capped to 100
+    score = calculate_risk_score(many_indicators)
+    assert score == 100
+
+
+def test_generate_explanation_and_recommendations():
+    """Explanation and recommendations should contain actionable details."""
+    sample = [
+        {"indicator": "ip_address", "triggered": True, "detail": "Raw IP used"}
+    ]
+    explanation = generate_explanation(sample)
+    recs = generate_recommendations("HIGH", sample)
+
+    assert "Raw IP Address" in explanation
+    assert len(recs) > 0
+    assert any("HIGH RISK" in r for r in recs)
+
 
 
 # ---- Validator Tests ----

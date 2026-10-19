@@ -91,4 +91,26 @@ This log tracks what was built, when, and why. Updated after every task.
 1. **URL Punctuation Cleaning**: When a message ends with `"Visit http://example.com."`, trailing dots/commas are stripped using `.rstrip(".,;:!?)")` so the extracted URL remains clean.
 2. **Resilience to Missing Files**: Added per-category fallback keyword dictionaries so the message scanner remains fully operational even if the CSV keyword database is absent.
 
+---
+
+## 2026-10-19 — Task 5: Risk Engine & Recommendation Engine Implemented
+
+### What Was Done
+- **`engine/risk_engine.py`**:
+  - Defined `INDICATOR_WEIGHTS` dictionary reflecting our documented heuristic values (e.g., 25 for raw IP, 25 for credential request, 10 for HTTP).
+  - Implemented `calculate_risk_score()`: iterates through triggered indicators, applies per-keyword multiplier for `suspicious_keywords` (5 pts per word up to 3 words = 15 pts max), and caps total score at 100 via `min(total, 100)`.
+  - Implemented `classify_threat()`: maps scores to the 4 discrete tiers: LOW (0-24), MEDIUM (25-49), HIGH (50-74), CRITICAL (75-100).
+- **`engine/recommendation_engine.py`**:
+  - Implemented `generate_explanation()`: translates triggered indicator results into human-readable descriptions prefixed with clean ASCII markers for cross-platform terminal compatibility.
+  - Implemented `generate_recommendations()`: provides tiered actionable advice (LOW through CRITICAL) plus contextual tips when specific high-severity indicators (like credential theft or IP addresses) trigger.
+- **`tests/test_scanner.py`**:
+  - Implemented unit tests for threat tier classification boundaries, capping logic at 100, and explanation/recommendation generation.
+  - All 25 unit tests passing.
+
+### Decisions Made
+1. **Explainable Output Over Raw Numbers**: Prioritized plain-English breakdown with user-friendly indicator names over numeric weights alone.
+2. **Dynamic Keyword Capping**: Suspicious keywords in URLs scale by count (5 per keyword up to 3) to prevent multiple common words from overwhelming the score single-handedly.
+3. **Cross-Platform ASCII Formatting**: Used `[!]` and `[*]` markers rather than unicode emojis to ensure reliable rendering in default Windows consoles (cp1252).
+
+
 
