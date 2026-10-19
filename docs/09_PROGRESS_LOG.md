@@ -37,8 +37,35 @@ This log tracks what was built, when, and why. Updated after every task.
    Never use real malicious URLs.
 
 ### What's Next
-- Task 3: Implement the URL scanner detection logic
+- Task 3: Implement the URL scanner detection logic (Completed below)
 - Task 4: Implement the message scanner detection logic
 - Task 5: Implement the risk engine and recommendation engine
 - Task 6: Connect everything in main.py
 - Task 7: Implement tests, statistics, and visualizations
+
+---
+
+## 2026-10-19 — Task 3: URL Scanner & Validator Logic Implemented
+
+### What Was Done
+- **`utils/validators.py`**:
+  - Implemented `sanitize_input()` using `strip()` to clean whitespace safely.
+  - Implemented `is_valid_url()` using `urllib.parse.urlparse` to ensure valid domain structure and dot presence.
+  - Implemented `is_valid_message()` to ensure non-empty input with at least 2 words and 5 characters.
+- **`scanners/url_scanner.py`**:
+  - Implemented `check_https()`: flags HTTP URLs as unencrypted.
+  - Implemented `check_ip_address()`: detects IPv4 address hostnames using regex.
+  - Implemented `check_url_length()`: flags URLs exceeding the 75-character threshold.
+  - Implemented `check_subdomains()`: counts dots in hostnames and flags 3+ subdomains.
+  - Implemented `check_suspicious_keywords()`: dynamic loading from `data/keywords.csv` with fallback defaults.
+  - Implemented `check_special_characters()`: detects `@` symbol redirection and abnormal `//` occurrences.
+  - Implemented `scan_url()`: orchestrates all 6 checks and returns structured results.
+- **`tests/test_scanner.py`**:
+  - Implemented full unit tests for all URL checks and validator functions.
+  - Ran pytest: all 24 test cases passing.
+
+### Decisions Made
+1. **Fallback Keywords**: If `data/keywords.csv` is missing or unreadable, `url_scanner.py` seamlessly falls back to hardcoded defaults so the program never crashes.
+2. **Subdomain Calculation**: Raw IP addresses are skipped from subdomain counts, preventing false triggers.
+3. **URL Obfuscation Characters**: Targeted `@` (which redirects credentials to an alternate host) and double slashes `//` within paths/queries.
+

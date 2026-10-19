@@ -19,57 +19,85 @@ Python concepts used:
 
 # ---- URL Scanner Tests ----
 
+from scanners.url_scanner import (
+    check_https,
+    check_ip_address,
+    check_url_length,
+    check_subdomains,
+    check_suspicious_keywords,
+    check_special_characters,
+    scan_url
+)
+from utils.validators import is_valid_url, is_valid_message, sanitize_input
+
 
 def test_check_https_detects_http():
     """HTTP URLs should trigger the HTTPS indicator."""
-    # Will call check_https("http://example.com") and verify
-    # that triggered is True.
-    pass
+    res = check_https("http://example.com")
+    assert res["triggered"] is True
+    assert res["indicator"] == "https_check"
 
 
 def test_check_https_passes_https():
     """HTTPS URLs should NOT trigger the HTTPS indicator."""
-    pass
+    res = check_https("https://example.com")
+    assert res["triggered"] is False
 
 
 def test_check_ip_address_detects_ip():
     """URLs with IP addresses should trigger the IP indicator."""
-    pass
+    res = check_ip_address("http://192.168.1.1/login")
+    assert res["triggered"] is True
+    assert res["indicator"] == "ip_address"
 
 
 def test_check_ip_address_passes_domain():
     """URLs with normal domains should NOT trigger the IP indicator."""
-    pass
+    res = check_ip_address("http://example.com")
+    assert res["triggered"] is False
 
 
 def test_check_url_length_detects_long_url():
     """Very long URLs should trigger the length indicator."""
-    pass
+    long_url = "http://example.com/" + ("a" * 80)
+    res = check_url_length(long_url)
+    assert res["triggered"] is True
+    assert res["indicator"] == "url_length"
 
 
 def test_check_url_length_passes_short_url():
     """Normal-length URLs should NOT trigger the length indicator."""
-    pass
+    res = check_url_length("https://example.com/login")
+    assert res["triggered"] is False
 
 
 def test_check_subdomains_detects_many():
     """URLs with 3+ subdomains should trigger the subdomain indicator."""
-    pass
+    res = check_subdomains("http://secure.login.bank.example.com")
+    assert res["triggered"] is True
+    assert res["indicator"] == "excessive_subdomains"
 
 
 def test_check_subdomains_passes_normal():
     """URLs with 0-2 subdomains should NOT trigger."""
-    pass
+    res = check_subdomains("https://www.example.com")
+    assert res["triggered"] is False
 
 
 def test_check_suspicious_keywords_detects():
     """URLs containing phishing keywords should trigger."""
-    pass
+    res = check_suspicious_keywords("http://example.com/verify-login-update")
+    assert res["triggered"] is True
+    assert "login" in res["matched_keywords"]
+    assert "verify" in res["matched_keywords"]
 
 
 def test_check_special_characters_detects_at():
     """URLs with @ symbol should trigger the special char indicator."""
-    pass
+    res = check_special_characters("http://google.com@evil.com/login")
+    assert res["triggered"] is True
+    assert "@" in res["found_characters"]
+
 
 
 # ---- Message Scanner Tests ----
@@ -138,14 +166,20 @@ def test_risk_score_capped_at_100():
 
 def test_is_valid_url_accepts_http():
     """HTTP URLs should be accepted as valid."""
-    pass
+    assert is_valid_url("http://example.com") is True
+    assert is_valid_url("https://www.example.com/login") is True
 
 
 def test_is_valid_url_rejects_garbage():
     """Random text should be rejected as invalid URL."""
-    pass
+    assert is_valid_url("not a url") is False
+    assert is_valid_url("hello world") is False
+    assert is_valid_url("") is False
 
 
 def test_is_valid_message_rejects_empty():
     """Empty strings should be rejected as invalid messages."""
-    pass
+    assert is_valid_message("") is False
+    assert is_valid_message("hi") is False
+    assert is_valid_message("Urgent notice regarding your account security") is True
+
