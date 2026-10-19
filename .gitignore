@@ -1,0 +1,34 @@
+# PhishGuard — Python .gitignore
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+# Data files that may contain sensitive info (keep headers, ignore data)
+# Note: We DO track scan_history.csv (header only) and keywords.csv

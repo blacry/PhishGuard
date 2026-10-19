@@ -1,0 +1,44 @@
+category,keyword,weight,description
+urgency,act now,10,Creates panic to rush the victim
+urgency,immediately,10,Pressures quick action without thinking
+urgency,urgent,10,Signals false time pressure
+urgency,expires,8,Implies limited time to act
+urgency,within 24 hours,10,Specific deadline creates panic
+urgency,right away,8,Pushes immediate action
+urgency,time sensitive,8,Makes the victim feel they'll miss out
+urgency,don't delay,8,Discourages careful thinking
+threat,account suspended,15,Threatens loss of access
+threat,account will be closed,15,Threatens permanent account loss
+threat,unauthorized access,12,Implies someone broke into your account
+threat,legal action,15,Threatens legal consequences
+threat,will be locked,12,Threatens losing account access
+threat,security breach,12,Implies your data is compromised
+threat,violation,10,Implies you broke rules
+credential,verify your password,20,Asks for login credentials directly
+credential,confirm your identity,18,Requests personal verification
+credential,update your account,15,Trick to harvest login details
+credential,verify your account,18,Common phishing phrase
+credential,enter your password,20,Direct credential theft attempt
+credential,login details,18,Asks for sensitive login info
+credential,social security,20,Requests highly sensitive ID number
+financial,bank account,15,References financial accounts
+financial,credit card,15,References payment card info
+financial,send payment,18,Asks victim to transfer money
+financial,wire transfer,18,Requests untraceable money transfer
+financial,gift card,18,Common scam payment method
+financial,billing information,15,Asks for payment details
+financial,update payment,15,Trick to harvest card numbers
+reward,congratulations you won,12,Too-good-to-be-true prize bait
+reward,you have been selected,12,False sense of being special
+reward,claim your prize,12,Lures victim with fake reward
+reward,lottery,10,Classic scam bait
+reward,free gift,10,Uses greed to lure clicks
+suspicious_url_words,login,5,Commonly used in fake login pages
+suspicious_url_words,verify,5,Used in credential-harvesting URLs
+suspicious_url_words,secure,5,Ironic use to seem trustworthy
+suspicious_url_words,account,5,Targets account-related anxiety
+suspicious_url_words,update,5,Implies action is needed
+suspicious_url_words,confirm,5,Pushes victim to "confirm" info
+suspicious_url_words,banking,5,Targets financial anxiety
+suspicious_url_words,signin,5,Mimics legitimate sign-in pages
+suspicious_url_words,password,5,Directly references credentials
