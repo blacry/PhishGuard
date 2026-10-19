@@ -15,29 +15,100 @@ Python concepts used:
 """
 
 
+import os
+import csv
+from datetime import datetime
+
+
+def _get_history_path():
+    """
+    Helper function to get the absolute path to data/scan_history.csv.
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(current_dir, "..", "data", "scan_history.csv")
+
+
 def save_scan(scan_result):
     """
     Save a single scan result to the CSV history file.
 
-    Takes:   scan_result (dict) — must contain:
-             {"timestamp": str, "input_type": str, "input": str,
+    Takes:   scan_result (dict) - must contain:
+             {"input_type": str, "input": str,
               "risk_score": int, "threat_level": str, "indicators": str}
-    Returns: bool — True if saved successfully, False if there was an error.
+             Optional: "timestamp" (defaults to current time if missing).
+    Returns: bool - True if saved successfully, False if there was an error.
 
     How it works:
         1. Open data/scan_history.csv in append mode ("a").
-        2. Write one new row with the scan data.
-        3. Close the file.
-
-    Why append mode?
-        "w" mode would erase previous scans every time. "a" mode adds
-        to the end, preserving all history. Think of it like a logbook.
-
-    Why return bool?
-        So the caller knows if saving worked. If the file is locked or
-        the disk is full, we return False instead of crashing.
+        2. If the file is newly created or empty, write the CSV header row.
+        3. Write one new row containing the scan record.
+        4. Close the file cleanly.
     """
-    pass
+    if not isinstance(scan_result, dict):
+        return False
+
+    history_path = _get_history_path()
+    fieldnames = ["timestamp", "input_type", "input", "risk_score", "threat_level", "indicators"]
+
+    # Provide automatic timestamp if omitted
+    timestamp = scan_result.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Sanitize input: truncate long messages to keep CSV readable,
+    # and ensure clean one-line representation (replace newlines)
+    raw_input = str(scan_result.get("input", "")).replace("\n", " ").strip()
+    if len(raw_input) > 80:
+        clean_input = raw_input[:77] + "..."
+    else:
+        clean_input = raw_input
+
+    row_data = {
+        "timestamp": timestamp,
+        "input_type": str(scan_result.get("input_type", "unknown")),
+        "input": clean_input,
+        "risk_score": int(scan_result.get("risk_score", 0)),
+        "threat_level": str(scan_result.get("threat_level", "LOW")),
+        "indicators": str(scan_result.get("indicators", ""))
+    }
+
+    try:
+        # Check if file exists and has content to know if header is needed
+        file_exists = os.path.exists(history_path)
+        is_empty = (os.path.getsize(history_path) == 0) if file_exists else True
+
+        with open(history_path, mode="a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if is_empty:
+                writer.writeheader()
+            writer.writerow(row_data)
+
+        return True
+    except Exception:
+        # Fail gracefully if file permissions or filesystem prevents write
+        return False
+
+
+def load_scan_history():
+    """
+    Read all past scan results from data/scan_history.csv.
+
+    Takes:   Nothing.
+    Returns: list of dicts - each dict represents one scan record.
+             Returns empty list if file doesn't exist or is empty.
+    """
+    history_path = _get_history_path()
+    if not os.path.exists(history_path):
+        return []
+
+    records = []
+    try:
+        with open(history_path, mode="r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                records.append(row)
+    except Exception:
+        return []
+
+    return records
 
 
 def generate_statistics():
@@ -45,17 +116,50 @@ def generate_statistics():
     Read scan history and compute summary statistics.
 
     Takes:   Nothing (reads from data/scan_history.csv).
-    Returns: dict — {"total_scans": int,
+    Returns: dict - {"total_scans": int,
                       "url_scans": int,
                       "message_scans": int,
                       "average_risk_score": float,
                       "threat_distribution": {"LOW": n, "MEDIUM": n,
                                               "HIGH": n, "CRITICAL": n}}
              Returns None if no history exists.
-
-    Why this exists:
-        Statistics help the user see patterns: "Am I getting more
-        phishing attempts? Are they mostly HIGH or LOW risk?"
-        This data can also be visualized with matplotlib later.
     """
-    pass
+    records = load_scan_history()
+    if not records:
+        return None
+
+    total_scans = len(records)
+    url_scans = 0
+    message_scans = 0
+    total_score = 0
+    threat_dist = {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+
+    for r in records:
+        itype = r.get("input_type", "").lower()
+        if itype == "url":
+            url_scans += 1
+        elif itype == "message":
+            message_scans += 1
+
+        try:
+            score = int(r.get("risk_score", 0))
+        except (ValueError, TypeError):
+            score = 0
+        total_score += score
+
+        level = r.get("threat_level", "LOW").upper()
+        if level in threat_dist:
+            threat_dist[level] += 1
+        else:
+            threat_dist["LOW"] += 1
+
+    avg_score = round(total_score / total_scans, 1) if total_scans > 0 else 0.0
+
+    return {
+        "total_scans": total_scans,
+        "url_scans": url_scans,
+        "message_scans": message_scans,
+        "average_risk_score": avg_score,
+        "threat_distribution": threat_dist
+    }
+

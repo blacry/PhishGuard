@@ -16,14 +16,20 @@ Python concepts used:
 """
 
 
+from utils.validators import is_valid_url, is_valid_message
+from scanners.url_scanner import scan_url
+from scanners.message_scanner import scan_message
+from engine.risk_engine import calculate_risk_score, classify_threat
+from engine.recommendation_engine import generate_explanation, generate_recommendations
+from utils.helpers import save_scan, load_scan_history, generate_statistics
+
+
 def display_banner():
     """
     Print the PhishGuard welcome banner.
 
     Takes:   Nothing.
     Returns: Nothing (just prints to screen).
-    Why:     A clear banner tells the user what app they're using
-             and makes the CLI feel polished.
     """
     print("=" * 55)
     print("       [*] PhishGuard - Phishing Detector v1.0")
@@ -38,9 +44,6 @@ def display_menu():
 
     Takes:   Nothing.
     Returns: Nothing (just prints to screen).
-    Why:     Showing numbered options makes it easy for the user
-             to pick what they want to do. Each number maps to
-             one feature of the app.
     """
     print("What would you like to do?")
     print("-" * 30)
@@ -57,71 +60,186 @@ def get_user_choice():
     Ask the user to pick a menu option and return it safely.
 
     Takes:   Nothing (reads from keyboard via input()).
-    Returns: An integer (1-5) if the input is valid,
-             or -1 if the input was not a number.
-    Why:     We wrap input() in try/except so that typing "abc"
-             doesn't crash the program with a ValueError.
+    Returns: An integer (1-5) if the input is valid, or -1 on error.
     """
     try:
-        # strip() removes accidental spaces before/after the number
         choice = int(input("Enter your choice (1-5): ").strip())
         return choice
     except ValueError:
-        # If the user types something that isn't a number,
-        # we return -1 so the main loop can show an error message.
         return -1
 
 
 def handle_url_scan():
     """
     Handle option 1: Scan a URL for phishing indicators.
-
-    Takes:   Nothing (will read URL from user in future tasks).
-    Returns: Nothing.
-    Why:     This is a placeholder. In Task 3+, it will call
-             url_scanner functions, compute risk, and show results.
+    Pipeline: Input -> Validate -> Scan -> Score -> Explain -> Recommend -> Save.
     """
-    print("\n[URL Scanner] - Not implemented yet.")
-    print("This will analyze a URL for phishing indicators.\n")
+    print("\n" + "=" * 55)
+    print("                [ URL SCANNER ]")
+    print("=" * 55)
+    raw_url = input("\nEnter the URL to analyze: ").strip()
+
+    if not is_valid_url(raw_url):
+        print("\n[!] Error: Invalid URL provided.")
+        print("    Please enter a valid web address (e.g., http://example.com).\n")
+        return
+
+    print("\n[*] Analyzing URL structure (static analysis)...")
+    results = scan_url(raw_url)
+    score = calculate_risk_score(results)
+    threat_level = classify_threat(score)
+    explanation = generate_explanation(results)
+    recommendations = generate_recommendations(threat_level, results)
+
+    # Print structured report
+    print("\n" + "-" * 55)
+    print(f" SCAN REPORT: {raw_url}")
+    print("-" * 55)
+    print(f" Risk Score   : {score} / 100")
+    print(f" Threat Level : [{threat_level}]")
+    print("-" * 55)
+    print("\nINDICATOR BREAKDOWN:")
+    print(explanation)
+    print("\nSAFETY RECOMMENDATIONS:")
+    for i, rec in enumerate(recommendations, 1):
+        print(f"  {i}. {rec}")
+    print("-" * 55)
+
+    # Save to history log
+    triggered = [r["indicator"] for r in results if r.get("triggered")]
+    indicators_str = "; ".join(triggered) if triggered else "none"
+    saved = save_scan({
+        "input_type": "url",
+        "input": raw_url,
+        "risk_score": score,
+        "threat_level": threat_level,
+        "indicators": indicators_str
+    })
+    if saved:
+        print("[*] Scan successfully logged to data/scan_history.csv\n")
+    else:
+        print("[!] Note: Could not save scan to history log.\n")
 
 
 def handle_message_scan():
     """
     Handle option 2: Scan a text message for phishing indicators.
-
-    Takes:   Nothing (will read message from user in future tasks).
-    Returns: Nothing.
-    Why:     This is a placeholder. In Task 3+, it will call
-             message_scanner functions, compute risk, and show results.
+    Pipeline: Input -> Validate -> Scan text + Scan embedded URLs -> Score -> Explain -> Recommend -> Save.
     """
-    print("\n[Message Scanner] - Not implemented yet.")
-    print("This will analyze a text message for phishing clues.\n")
+    print("\n" + "=" * 55)
+    print("              [ MESSAGE SCANNER ]")
+    print("=" * 55)
+    print("Paste or type the suspicious message below:")
+    raw_msg = input("> ").strip()
+
+    if not is_valid_message(raw_msg):
+        print("\n[!] Error: Message is too short or empty.")
+        print("    Please provide a complete message with at least a few words.\n")
+        return
+
+    print("\n[*] Analyzing message text for phishing indicators...")
+    msg_result = scan_message(raw_msg)
+    all_indicators = list(msg_result["message_indicators"])
+
+    # If URLs are found inside the message, also analyze their structure
+    extracted_urls = msg_result.get("extracted_urls", [])
+    if extracted_urls:
+        print(f"[*] Found {len(extracted_urls)} embedded link(s). Analyzing URL structure...")
+        for u in extracted_urls:
+            url_indicators = scan_url(u)
+            all_indicators.extend(url_indicators)
+
+    score = calculate_risk_score(all_indicators)
+    threat_level = classify_threat(score)
+    explanation = generate_explanation(all_indicators)
+    recommendations = generate_recommendations(threat_level, all_indicators)
+
+    # Print structured report
+    print("\n" + "-" * 55)
+    print(" SCAN REPORT: Message Content")
+    print("-" * 55)
+    print(f" Risk Score   : {score} / 100")
+    print(f" Threat Level : [{threat_level}]")
+    if extracted_urls:
+        print(f" Embedded URLs: {', '.join(extracted_urls)}")
+    print("-" * 55)
+    print("\nINDICATOR BREAKDOWN:")
+    print(explanation)
+    print("\nSAFETY RECOMMENDATIONS:")
+    for i, rec in enumerate(recommendations, 1):
+        print(f"  {i}. {rec}")
+    print("-" * 55)
+
+    # Save to history log
+    triggered = [r["indicator"] for r in all_indicators if r.get("triggered")]
+    indicators_str = "; ".join(triggered) if triggered else "none"
+    saved = save_scan({
+        "input_type": "message",
+        "input": raw_msg,
+        "risk_score": score,
+        "threat_level": threat_level,
+        "indicators": indicators_str
+    })
+    if saved:
+        print("[*] Scan successfully logged to data/scan_history.csv\n")
+    else:
+        print("[!] Note: Could not save scan to history log.\n")
 
 
 def handle_view_history():
     """
-    Handle option 3: Show past scan results from CSV.
-
-    Takes:   Nothing.
-    Returns: Nothing.
-    Why:     Placeholder for viewing saved scan history.
-             Will read from data/scan_history.csv later.
+    Handle option 3: Show past scan results from data/scan_history.csv.
     """
-    print("\n[Scan History] - Not implemented yet.")
-    print("This will show your past scan results.\n")
+    print("\n" + "=" * 55)
+    print("               [ SCAN HISTORY ]")
+    print("=" * 55)
+    records = load_scan_history()
+    if not records:
+        print("\n[*] No scan history found. Scans will appear here after you analyze URLs or messages.\n")
+        return
+
+    recent = records[-10:]
+    print(f"\nShowing {len(recent)} most recent scan(s):\n")
+    print(f"{'#':<3} {'Timestamp':<20} {'Type':<8} {'Score':<6} {'Threat':<9} {'Input Preview'}")
+    print("-" * 75)
+    for idx, r in enumerate(recent, 1):
+        t_stamp = r.get("timestamp", "N/A")[:19]
+        itype = r.get("input_type", "N/A")
+        score = r.get("risk_score", "0")
+        level = r.get("threat_level", "LOW")
+        inp = r.get("input", "")
+        if len(inp) > 28:
+            inp = inp[:25] + "..."
+        print(f"{idx:<3} {t_stamp:<20} {itype:<8} {score:<6} {level:<9} {inp}")
+    print("-" * 75 + "\n")
 
 
 def handle_statistics():
     """
-    Handle option 4: Show summary statistics of all scans.
-
-    Takes:   Nothing.
-    Returns: Nothing.
-    Why:     Placeholder for statistics and charts.
-             Will use pandas and matplotlib later.
+    Handle option 4: Show summary statistics of all scans with an ASCII chart.
     """
-    print("\n[Statistics] - Not implemented yet.")
-    print("This will show charts and stats about your scans.\n")
+    print("\n" + "=" * 55)
+    print("              [ SCAN STATISTICS ]")
+    print("=" * 55)
+    stats = generate_statistics()
+    if not stats:
+        print("\n[*] No scan data available yet to compute statistics.\n")
+        return
+
+    print(f"\nTotal Scans Analyzed : {stats['total_scans']}")
+    print(f"  - URL Scans         : {stats['url_scans']}")
+    print(f"  - Message Scans     : {stats['message_scans']}")
+    print(f"Average Risk Score    : {stats['average_risk_score']} / 100")
+    print("\nThreat Level Distribution:")
+    dist = stats["threat_distribution"]
+    total = stats["total_scans"]
+    for level in ["LOW", "MEDIUM", "HIGH", "CRITICAL"]:
+        count = dist.get(level, 0)
+        pct = (count / total * 100) if total > 0 else 0
+        bars = "#" * int(pct // 5)
+        print(f"  {level:<8}: {count:>3} ({pct:>5.1f}%) | {bars}")
+    print("\n" + "=" * 55 + "\n")
+
 
 
 def main():

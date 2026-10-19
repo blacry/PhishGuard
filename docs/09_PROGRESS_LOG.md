@@ -112,5 +112,29 @@ This log tracks what was built, when, and why. Updated after every task.
 2. **Dynamic Keyword Capping**: Suspicious keywords in URLs scale by count (5 per keyword up to 3) to prevent multiple common words from overwhelming the score single-handedly.
 3. **Cross-Platform ASCII Formatting**: Used `[!]` and `[*]` markers rather than unicode emojis to ensure reliable rendering in default Windows consoles (cp1252).
 
+---
+
+## 2026-10-19 — Task 6: CLI & CSV History Integration (main.py + helpers.py)
+
+### What Was Done
+- **`utils/helpers.py`**:
+  - Implemented `save_scan()`: appends new scans to `data/scan_history.csv` with automated timestamps and input sanitization (newlines replaced, strings truncated at 80 chars for clean CSV layout).
+  - Implemented `load_scan_history()`: reads records using `csv.DictReader` and returns structured dictionaries.
+  - Implemented `generate_statistics()`: computes total scans, counts by input type (URL vs. message), average risk score, and threat distribution counts.
+- **`main.py`**:
+  - Connected Option 1 (`handle_url_scan()`): prompts user -> validates -> scans -> calculates risk -> classifies threat -> displays structured report with recommendations -> logs to history.
+  - Connected Option 2 (`handle_message_scan()`): prompts user -> validates message -> analyzes linguistic patterns -> extracts embedded URLs and scans their structure -> calculates combined risk -> explains & recommends -> logs to history.
+  - Connected Option 3 (`handle_view_history()`): displays the 10 most recent scans in a structured tabular ASCII layout.
+  - Connected Option 4 (`handle_statistics()`): renders summary metrics and an ASCII bar graph depicting threat distribution percentages.
+- **`tests/test_scanner.py`**:
+  - Added unit tests for CSV scan saving, history loading, and statistics generation.
+  - All 27 unit tests passing.
+
+### Decisions Made
+1. **Dual Scanning for Messages**: When a message contains URLs, PhishGuard performs both linguistic analysis on the text AND structural analysis on the extracted links, combining indicators into an overall risk score.
+2. **Terminal-Friendly Table & ASCII Chart**: Built formatted table views and horizontal bar charts using pure string manipulation (`"#" * bars`), ensuring zero reliance on complex GUI or web dependencies for core operation.
+3. **Automatic Timestamping**: If callers omit a timestamp, `helpers.save_scan()` automatically stamps current local time (`YYYY-MM-DD HH:MM:SS`).
+
+
 
 

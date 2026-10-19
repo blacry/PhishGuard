@@ -241,3 +241,35 @@ def test_is_valid_message_rejects_empty():
     assert is_valid_message("hi") is False
     assert is_valid_message("Urgent notice regarding your account security") is True
 
+
+# ---- Helper & Statistics Tests ----
+
+from utils.helpers import save_scan, load_scan_history, generate_statistics
+
+
+def test_save_scan_and_load_history():
+    """Verify that scan saving appends records correctly."""
+    scan = {
+        "input_type": "url",
+        "input": "http://example.com/test-scan",
+        "risk_score": 10,
+        "threat_level": "LOW",
+        "indicators": "https_check"
+    }
+    success = save_scan(scan)
+    assert success is True
+
+    history = load_scan_history()
+    assert len(history) > 0
+    assert any(h.get("input") == "http://example.com/test-scan" for h in history)
+
+
+def test_generate_statistics():
+    """Verify that statistics compute totals and distributions."""
+    stats = generate_statistics()
+    assert stats is not None
+    assert stats["total_scans"] >= 1
+    assert "threat_distribution" in stats
+    assert "LOW" in stats["threat_distribution"]
+
+
