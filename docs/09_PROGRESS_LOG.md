@@ -69,3 +69,26 @@ This log tracks what was built, when, and why. Updated after every task.
 2. **Subdomain Calculation**: Raw IP addresses are skipped from subdomain counts, preventing false triggers.
 3. **URL Obfuscation Characters**: Targeted `@` (which redirects credentials to an alternate host) and double slashes `//` within paths/queries.
 
+---
+
+## 2026-10-19 — Task 4: Message Scanner Detection Logic Implemented
+
+### What Was Done
+- **`scanners/message_scanner.py`**:
+  - Implemented `extract_urls()`: uses regex pattern `https?://[^\s<>\"']+` and strips trailing punctuation like `.` and `,` so trailing sentence punctuation isn't attached to URLs.
+  - Implemented `detect_urgency()`: matches urgency terms (e.g., 'act now', 'within 24 hours') loaded dynamically from `data/keywords.csv`.
+  - Implemented `detect_threat_language()`: matches threats of suspension, legal action, and lockouts.
+  - Implemented `detect_credential_request()`: flags phrases soliciting passwords, identity confirmations, or credential verifications.
+  - Implemented `detect_financial_request()`: catches requests for bank accounts, wire transfers, and gift cards.
+  - Implemented `scan_message()`: central coordinator executing all 4 linguistic checks and extracting URLs for dual analysis.
+- **`data/keywords.csv`**:
+  - Expanded threat and credential terms to include common phrasings such as 'suspended', 'locked', and 'click here to verify'.
+- **`tests/test_scanner.py`**:
+  - Implemented unit tests for all message scanner functions.
+  - All 24 unit tests passing.
+
+### Decisions Made
+1. **URL Punctuation Cleaning**: When a message ends with `"Visit http://example.com."`, trailing dots/commas are stripped using `.rstrip(".,;:!?)")` so the extracted URL remains clean.
+2. **Resilience to Missing Files**: Added per-category fallback keyword dictionaries so the message scanner remains fully operational even if the CSV keyword database is absent.
+
+

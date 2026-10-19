@@ -8,16 +8,19 @@ urgency,right away,8,Pushes immediate action
 urgency,time sensitive,8,Makes the victim feel they'll miss out
 urgency,don't delay,8,Discourages careful thinking
 threat,account suspended,15,Threatens loss of access
+threat,suspended,15,Threatens loss of access or service
 threat,account will be closed,15,Threatens permanent account loss
 threat,unauthorized access,12,Implies someone broke into your account
 threat,legal action,15,Threatens legal consequences
 threat,will be locked,12,Threatens losing account access
+threat,locked,12,Threatens account lockout
 threat,security breach,12,Implies your data is compromised
 threat,violation,10,Implies you broke rules
 credential,verify your password,20,Asks for login credentials directly
 credential,confirm your identity,18,Requests personal verification
 credential,update your account,15,Trick to harvest login details
 credential,verify your account,18,Common phishing phrase
+credential,click here to verify,18,Common credential phishing lure
 credential,enter your password,20,Direct credential theft attempt
 credential,login details,18,Asks for sensitive login info
 credential,social security,20,Requests highly sensitive ID number

@@ -102,35 +102,58 @@ def test_check_special_characters_detects_at():
 
 # ---- Message Scanner Tests ----
 
+from scanners.message_scanner import (
+    extract_urls,
+    detect_urgency,
+    detect_threat_language,
+    detect_credential_request,
+    detect_financial_request,
+    scan_message
+)
+
 
 def test_extract_urls_finds_url():
     """Messages containing URLs should return them in a list."""
-    pass
+    urls = extract_urls("Please click http://example.com/login for details.")
+    assert urls == ["http://example.com/login"]
 
 
 def test_extract_urls_empty_message():
     """Messages with no URLs should return an empty list."""
-    pass
+    urls = extract_urls("Hello there, hope you have a great day!")
+    assert urls == []
 
 
 def test_detect_urgency_finds_urgent():
     """Messages with urgency words should trigger."""
-    pass
+    res = detect_urgency("Act now! You must respond within 24 hours.")
+    assert res["triggered"] is True
+    assert res["indicator"] == "urgency_language"
+    assert "act now" in res["matched_words"]
 
 
 def test_detect_threat_language_finds_threat():
     """Messages with threat words should trigger."""
-    pass
+    res = detect_threat_language("Your account will be suspended due to unauthorized access.")
+    assert res["triggered"] is True
+    assert res["indicator"] == "threat_language"
 
 
 def test_detect_credential_request_finds_request():
     """Messages asking for credentials should trigger."""
-    pass
+    res = detect_credential_request("Please verify your password immediately.")
+    assert res["triggered"] is True
+    assert res["indicator"] == "credential_request"
+    assert "verify your password" in res["matched_words"]
 
 
 def test_detect_financial_request_finds_request():
     """Messages asking for money/banking info should trigger."""
-    pass
+    res = detect_financial_request("Send payment using a gift card or bank account.")
+    assert res["triggered"] is True
+    assert res["indicator"] == "financial_request"
+    assert "bank account" in res["matched_words"]
+
 
 
 # ---- Risk Engine Tests ----
