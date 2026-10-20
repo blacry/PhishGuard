@@ -85,5 +85,16 @@ pytest tests/test_scanner.py -v
 
 ## Current Status
 
-All test functions are stubs (`pass` bodies). They will be implemented
-alongside the actual detection logic in Task 3+.
+All **28 test functions** are fully implemented and passing:
+- 10 URL scanner tests
+- 6 Message scanner tests
+- 6 Risk & recommendation engine tests
+- 3 Input validator tests
+- 2 CSV history & statistics tests
+- 1 Batch regression test for all 10 prebuilt cases in `data/test_cases.csv`
+
+Run them anytime with:
+```bash
+python -m pytest -v
+```
+

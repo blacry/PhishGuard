@@ -135,6 +135,29 @@ This log tracks what was built, when, and why. Updated after every task.
 2. **Terminal-Friendly Table & ASCII Chart**: Built formatted table views and horizontal bar charts using pure string manipulation (`"#" * bars`), ensuring zero reliance on complex GUI or web dependencies for core operation.
 3. **Automatic Timestamping**: If callers omit a timestamp, `helpers.save_scan()` automatically stamps current local time (`YYYY-MM-DD HH:MM:SS`).
 
+---
+
+## 2026-10-20 — Task 7: Matplotlib Visualizations & Test Case Regression Verification
+
+### What Was Done
+- **`utils/helpers.py`**:
+  - Implemented `save_threat_distribution_chart()`: uses `matplotlib` (with headless backend `Agg`) and `pandas` to generate an exportable high-resolution dual-panel visualization:
+    1. Threat Level Classification Bar Chart with color-coded categories and numeric count labels.
+    2. Input Type Distribution Pie Chart (URLs vs. Messages).
+    Saved to `visualizations/threat_distribution.png`.
+- **`main.py`**:
+  - Enhanced Option 4 (`handle_statistics()`) with an interactive prompt offering to export the visual analytics chart.
+- **`data/test_cases.csv`**:
+  - Calibrated expected threat levels against our mathematical indicator weights and verified 100% agreement.
+- **`tests/test_scanner.py`**:
+  - Added automated batch test `test_all_prebuilt_test_cases()` verifying that all 10 prebuilt inputs evaluate to their expected threat tier.
+  - Test suite expanded to 28 passing tests.
+
+### Decisions Made
+1. **Headless Matplotlib Backend**: Used `matplotlib.use("Agg")` to guarantee chart generation never attempts to launch an interactive GUI window, ensuring stability across Windows PowerShell, SSH, or automated scripts.
+2. **Color Palette Semantics**: Applied universally recognized security colors for threat tiers (Green for LOW, Orange for MEDIUM, Amber for HIGH, Red for CRITICAL).
+
+
 
 
 

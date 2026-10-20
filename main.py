@@ -21,7 +21,12 @@ from scanners.url_scanner import scan_url
 from scanners.message_scanner import scan_message
 from engine.risk_engine import calculate_risk_score, classify_threat
 from engine.recommendation_engine import generate_explanation, generate_recommendations
-from utils.helpers import save_scan, load_scan_history, generate_statistics
+from utils.helpers import (
+    save_scan,
+    load_scan_history,
+    generate_statistics,
+    save_threat_distribution_chart
+)
 
 
 def display_banner():
@@ -238,7 +243,20 @@ def handle_statistics():
         pct = (count / total * 100) if total > 0 else 0
         bars = "#" * int(pct // 5)
         print(f"  {level:<8}: {count:>3} ({pct:>5.1f}%) | {bars}")
-    print("\n" + "=" * 55 + "\n")
+    print("-" * 55)
+
+    # Offer to export visual chart
+    export_choice = input("\nWould you like to export a visual chart image? (y/n): ").strip().lower()
+    if export_choice in ("y", "yes"):
+        print("[*] Generating visual analytics chart using matplotlib...")
+        chart_file = save_threat_distribution_chart()
+        if chart_file:
+            print(f"[*] Visual chart saved to: {chart_file}\n")
+        else:
+            print("[!] Could not generate chart: no scan history found.\n")
+    else:
+        print()
+
 
 
 

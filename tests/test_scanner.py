@@ -273,3 +273,33 @@ def test_generate_statistics():
     assert "LOW" in stats["threat_distribution"]
 
 
+def test_all_prebuilt_test_cases():
+    """Verify that all 10 prebuilt cases in test_cases.csv evaluate to their expected threat level."""
+    import os
+    import csv
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    cases_path = os.path.join(current_dir, "..", "data", "test_cases.csv")
+    assert os.path.exists(cases_path)
+
+    with open(cases_path, mode="r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            itype = row["input_type"]
+            inp = row["input"]
+            expected = row["expected_threat_level"]
+
+            if itype == "url":
+                res = scan_url(inp)
+            else:
+                mres = scan_message(inp)
+                res = list(mres["message_indicators"])
+                for u in mres["extracted_urls"]:
+                    res.extend(scan_url(u))
+
+            score = calculate_risk_score(res)
+            actual = classify_threat(score)
+            assert actual == expected, f"Failed on '{inp}': expected {expected}, got {actual}"
+
+
+

@@ -163,3 +163,72 @@ def generate_statistics():
         "threat_distribution": threat_dist
     }
 
+
+def save_threat_distribution_chart(output_path=None):
+    """
+    Generate and save visual analytics charts using matplotlib and pandas.
+    Saves a clean two-panel chart (Threat Distribution Bar Chart + Scan Types Pie Chart)
+    to visualizations/threat_distribution.png.
+
+    Takes:   output_path (str, optional) - custom save location.
+    Returns: str - path to saved image file, or None if no data to plot.
+    """
+    records = load_scan_history()
+    if not records:
+        return None
+
+    import matplotlib
+    matplotlib.use("Agg")  # Non-interactive backend safe for CLI scripts
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if not output_path:
+        viz_dir = os.path.join(current_dir, "..", "visualizations")
+        os.makedirs(viz_dir, exist_ok=True)
+        output_path = os.path.join(viz_dir, "threat_distribution.png")
+
+    df = pd.DataFrame(records)
+
+    # Convert risk_score to numeric
+    df["risk_score"] = pd.to_numeric(df["risk_score"], errors="coerce").fillna(0)
+
+    # Prepare Threat Distribution counts
+    levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    counts = [sum(df["threat_level"].str.upper() == lvl) for lvl in levels]
+    colors = ["#2ecc71", "#f39c12", "#e67e22", "#e74c3c"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle("PhishGuard Security Analytics", fontsize=16, fontweight="bold", y=1.02)
+
+    # 1. Bar Chart: Threat Levels
+    bars = ax1.bar(levels, counts, color=colors, edgecolor="#333333", linewidth=1.2)
+    ax1.set_title("Threat Level Classification", fontsize=12, pad=10)
+    ax1.set_ylabel("Number of Scans", fontsize=10)
+    ax1.set_xlabel("Threat Level", fontsize=10)
+    ax1.grid(axis="y", linestyle="--", alpha=0.5)
+
+    # Add numeric labels on top of bars
+    for bar in bars:
+        height = bar.get_height()
+        ax1.annotate(f"{int(height)}",
+                     xy=(bar.get_x() + bar.get_width() / 2, height),
+                     xytext=(0, 3),
+                     textcoords="offset points",
+                     ha="center", va="bottom", fontsize=10, fontweight="bold")
+
+    # 2. Pie Chart: Input Type Distribution
+    type_counts = df["input_type"].str.lower().value_counts()
+    labels = [t.title() for t in type_counts.index]
+    ax2.pie(type_counts, labels=labels, autopct="%1.1f%%", startangle=140,
+            colors=["#3498db", "#9b59b6"][:len(type_counts)],
+            wedgeprops={"edgecolor": "#333333", "linewidth": 1.2})
+    ax2.set_title("Scans by Input Type", fontsize=12, pad=10)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    return output_path
+
+
