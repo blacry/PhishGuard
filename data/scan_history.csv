@@ -3,3 +3,9 @@ timestamp,input_type,input,risk_score,threat_level,indicators
 2026-10-19 22:57:26,message,URGENT: Your bank account will be suspended within 24 hours. Verify your acco...,100,CRITICAL,urgency_language; threat_language; credential_request; financial_request; https_check; suspicious_keywords
 2026-10-19 23:04:37,url,http://example.com/test-scan,10,LOW,https_check
 2026-10-20 18:04:41,url,http://example.com/test-scan,10,LOW,https_check
+2026-10-20 18:40:08,url,https://www.instagram.com/itz_vixek/,0,LOW,none
+2026-10-20 18:40:50,url,http://www.instagram.com/itz_vixek/,10,LOW,https_check
+2026-10-20 18:41:58,message,"hello, im gonna murder u",0,LOW,none
+2026-10-20 18:42:29,message,"hey! u won a lottery, here view it by clicking on this link https://www.insta...",0,LOW,none
+2026-10-20 18:42:57,message,"hey! u won a lottery, here view it by clicking on this link http://www.instag...",10,LOW,https_check
+2026-11-24 02:24:53,url,google.com,10,LOW,https_check
