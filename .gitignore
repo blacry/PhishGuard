@@ -32,3 +32,4 @@ build/
 
 # Data files that may contain sensitive info (keep headers, ignore data)
 # Note: We DO track scan_history.csv (header only) and keywords.csv
+/history.json
