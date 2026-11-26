@@ -9,3 +9,4 @@ timestamp,input_type,input,risk_score,threat_level,indicators
 2026-10-20 18:42:29,message,"hey! u won a lottery, here view it by clicking on this link https://www.insta...",0,LOW,none
 2026-10-20 18:42:57,message,"hey! u won a lottery, here view it by clicking on this link http://www.instag...",10,LOW,https_check
 2026-11-24 02:24:53,url,google.com,10,LOW,https_check
+2026-11-23 21:41:35,url,https://www.geeksforgeeks.org/python/python-list-exercise/,0,LOW,none

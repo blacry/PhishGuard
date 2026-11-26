@@ -23,7 +23,7 @@ For each scan, it:
 3. **Classifies** the threat as LOW / MEDIUM / HIGH / CRITICAL
 4. **Explains** which indicators fired and why they're suspicious
 5. **Recommends** what the user should do
-6. **Saves** every scan to a CSV history for later review
+6. **Saves** every scan to a local JSON history for later review
 
 ⚠️ **Important:** PhishGuard uses static analysis only. It NEVER opens,
 visits, or makes requests to submitted URLs.
@@ -72,6 +72,16 @@ What would you like to do?
 Enter your choice (1-5):
 ```
 
+## 🌐 Run the web app
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The CLI and web app use the same static analysis rules and save scan records
+to the local `history.json` file.
+
 ---
 
 ## 📁 Project Structure
@@ -79,6 +89,9 @@ Enter your choice (1-5):
 ```
 PhishGuard/
 ├── main.py                          # CLI entry point (menu loop)
+├── app.py                           # Streamlit web interface
+├── scanner.py                       # Shared result-oriented scan functions
+├── storage.py                       # JSON history and statistics
 ├── scanners/
 │   ├── __init__.py
 │   ├── url_scanner.py               # URL phishing checks (6 indicators)
@@ -94,9 +107,11 @@ PhishGuard/
 ├── data/
 │   ├── keywords.csv                 # Phishing keyword database
 │   ├── test_cases.csv               # Pre-built test inputs
-│   └── scan_history.csv             # Saved scan results (append-only)
+│   └── scan_history.csv             # Legacy scan history
+├── history.json                     # New scans (created automatically)
 ├── tests/
-│   └── test_scanner.py              # pytest unit tests
+│   ├── test_scanner.py              # pytest unit tests
+│   └── test_web_modules.py          # New scanner and JSON storage tests
 ├── docs/                            # Full project documentation
 ├── reports/                         # Generated reports
 ├── visualizations/                  # Generated charts
@@ -112,7 +127,7 @@ PhishGuard/
 ## 🧪 Running Tests
 
 ```bash
-pytest tests/test_scanner.py -v
+pytest tests/ -v
 ```
 
 ---
