@@ -2,6 +2,7 @@
 
 import json
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
@@ -48,8 +49,15 @@ st.markdown(
             color: #b7b2a3 !important;
         }
         [data-testid="stSidebar"] {
-            background: #11120d;
-            border-right: 1px solid #28271d;
+            background:
+                radial-gradient(ellipse at 50% 0, rgba(151, 110, 27, 0.14), transparent 52%),
+                #10110d;
+            border-right: 1px solid #302d20;
+        }
+        [data-testid="stSidebarContent"] {
+            box-sizing: border-box;
+            padding: 1.1rem 0.85rem 1.4rem;
+            width: 100%;
         }
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
             color: #f3f0e6;
@@ -57,41 +65,119 @@ st.markdown(
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
             color: #b7b2a3;
         }
-        [data-testid="stSidebar"] [role="radiogroup"] label {
-            background: transparent;
-            border: 1px solid transparent;
-            border-radius: 7px;
-            color: #e6e1d3 !important;
-            padding: 0.6rem 0.75rem;
-            margin: 0.25rem 0;
-            transition: border-color 150ms ease, background 150ms ease;
+        [data-testid="stSidebar"] [data-testid="stButton"] {
+            width: 100%;
         }
-        [data-testid="stSidebar"] [role="radiogroup"] label p {
-            color: inherit !important;
+        [data-testid="stSidebar"] [data-testid="stButton"] > button {
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 0.96rem;
+            font-weight: 600;
+            min-height: 3.15rem;
+            transition:
+                border-color 150ms ease,
+                background 150ms ease,
+                box-shadow 150ms ease,
+                color 150ms ease;
+            width: 100%;
         }
-        [data-testid="stSidebar"] [role="radiogroup"] label:hover {
-            background: #1b1b12;
-            border-color: #51451f;
+        [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"] {
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid #302f25;
+            color: #e6e1d3;
         }
-        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-            background: #282311;
-            border-color: #9c7920;
-            color: #ffda69 !important;
+        [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"]:hover {
+            background: #1b1b14;
+            border-color: #65532b;
+            color: #fff3d0;
+        }
+        [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"] {
+            background: linear-gradient(105deg, #302712 0%, #211e13 100%);
+            border: 1px solid #9a7926;
+            box-shadow: inset 3px 0 0 #efbd3e, 0 4px 14px rgba(0, 0, 0, 0.14);
+            color: #ffda69;
+        }
+        [data-testid="stSidebar"] [data-testid="stButton"] > button div[data-testid="stMarkdownContainer"] p {
+            color: inherit;
+            font-weight: inherit;
+            margin: 0;
+            text-align: center;
         }
         .sidebar-brand {
-            border-bottom: 1px solid #302d20;
-            margin-bottom: 1.2rem;
-            padding: 0.8rem 0 1.3rem;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(226, 173, 42, 0.08), rgba(255, 255, 255, 0.015));
+            border: 1px solid #302d20;
+            border-radius: 12px;
+            display: flex;
+            gap: 0.7rem;
+            justify-content: center;
+            margin-bottom: 1.55rem;
+            padding: 0.9rem 0.55rem;
+            text-align: left;
+        }
+        .sidebar-brand-mark {
+            align-items: center;
+            background: linear-gradient(145deg, #f3c94e, #c88d13);
+            border: 1px solid #f5d774;
+            border-radius: 11px;
+            color: #17140b;
+            display: flex;
+            flex: 0 0 2.55rem;
+            font-size: 1.1rem;
+            font-weight: 850;
+            height: 2.55rem;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(226, 173, 42, 0.16);
         }
         .sidebar-brand-name {
             color: #ffffff;
-            font-size: 1.15rem;
-            font-weight: 750;
-            letter-spacing: 0.025em;
+            font-size: 1.03rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
         }
         .sidebar-brand-copy {
-            color: #b7b2a3;
-            font-size: 0.84rem;
+            color: #a9a495;
+            font-size: 0.74rem;
+            margin-top: 0.2rem;
+        }
+        .sidebar-section-label {
+            color: #898576;
+            font-size: 0.75rem;
+            font-weight: 750;
+            letter-spacing: 0.13em;
+            margin: 0.15rem 0.3rem 0.8rem;
+            text-align: left;
+            text-transform: uppercase;
+        }
+        .sidebar-privacy {
+            background: rgba(25, 26, 19, 0.72);
+            border: 1px solid #363326;
+            border-radius: 9px;
+            box-sizing: border-box;
+            margin-top: 0.75rem;
+            padding: 0.8rem 0.85rem;
+            text-align: left;
+            width: 100%;
+        }
+        .sidebar-privacy-title {
+            color: #e9e4d7;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .sidebar-privacy-dot {
+            background: #65bd76;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(101, 189, 118, 0.5);
+            display: inline-block;
+            height: 7px;
+            margin-right: 0.4rem;
+            vertical-align: 1px;
+            width: 7px;
+        }
+        .sidebar-privacy-copy {
+            color: #aaa597;
+            font-size: 0.72rem;
+            line-height: 1.45;
             margin-top: 0.35rem;
         }
         .hero {
@@ -226,17 +312,50 @@ st.markdown(
             color: #17150e;
             font-weight: 750;
             min-height: 2.7rem;
+            transition:
+                background 140ms ease,
+                border-color 140ms ease,
+                box-shadow 140ms ease,
+                transform 110ms ease;
         }
         [data-testid="stBaseButton-primary"]:hover {
             background: #f0c34e;
             border-color: #f0c34e;
             color: #17150e;
+            box-shadow: 0 4px 14px rgba(226, 173, 42, 0.2);
+            transform: translateY(-1px);
         }
         [data-testid="stBaseButton-secondary"] {
             background: #1b1c15;
             border: 1px solid #4d4937;
             border-radius: 999px;
             color: #eee9dc;
+            transition:
+                background 140ms ease,
+                border-color 140ms ease,
+                transform 110ms ease;
+        }
+        [data-testid="stBaseButton-secondary"]:hover {
+            background: #26251b;
+            border-color: #8e7021;
+            transform: translateY(-1px);
+        }
+        [data-testid="stBaseButton-primary"]:active,
+        [data-testid="stBaseButton-secondary"]:active {
+            box-shadow: none;
+            transform: scale(0.97);
+        }
+        [data-testid="stBaseButton-primary"]:focus-visible,
+        [data-testid="stBaseButton-secondary"]:focus-visible {
+            outline: 2px solid #f3cf65;
+            outline-offset: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [data-testid="stSidebar"] [role="radiogroup"] label,
+            [data-testid="stBaseButton-primary"],
+            [data-testid="stBaseButton-secondary"] {
+                transition: none;
+            }
         }
         [data-testid="stExpander"] {
             background: #191a13;
@@ -268,20 +387,48 @@ st.markdown(
 st.sidebar.markdown(
     """
     <div class="sidebar-brand">
-        <div class="sidebar-brand-name">PHISHGUARD</div>
-        <div class="sidebar-brand-copy">A smarter pause before you click.</div>
+            <div class="sidebar-brand-mark">P</div>
+            <div>
+                <div class="sidebar-brand-name">PHISHGUARD</div>
+                <div class="sidebar-brand-copy">A smarter pause before you click.</div>
+            </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.markdown("#### WORKSPACE")
-page = st.sidebar.radio(
-    "Navigation",
-    ["Scan a URL", "Scan a message", "Scan history", "Statistics"],
-    label_visibility="collapsed",
+st.sidebar.markdown(
+    '<div class="sidebar-section-label">Workspace</div>',
+    unsafe_allow_html=True,
 )
-st.sidebar.markdown("---")
-st.sidebar.caption("STATIC ANALYSIS · YOUR LINKS ARE NEVER OPENED")
+navigation_options = ["Scan a URL", "Scan a message", "Scan history", "Statistics"]
+if "selected_page" not in st.session_state:
+    st.session_state["selected_page"] = navigation_options[0]
+
+for index, option in enumerate(navigation_options):
+    is_selected = st.session_state["selected_page"] == option
+    if st.sidebar.button(
+        option,
+        key=f"page-navigation-{index}",
+        type="primary" if is_selected else "secondary",
+        width="stretch",
+    ):
+        st.session_state["selected_page"] = option
+        st.rerun()
+
+page = st.session_state["selected_page"]
+st.sidebar.markdown(
+    """
+    <div class="sidebar-privacy">
+        <div class="sidebar-privacy-title">
+            <span class="sidebar-privacy-dot"></span>LOCAL &amp; PRIVATE
+        </div>
+        <div class="sidebar-privacy-copy">
+            Links are checked by static analysis and never opened.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     """
@@ -459,4 +606,74 @@ elif page == "Statistics":
             stats["counts_per_level"], orient="index", columns=["Scans"]
         )
         chart_data.index.name = "Threat level"
-        st.bar_chart(chart_data, color="#168a91")
+        bar_chart, pie_chart = st.columns(2)
+        bar_chart.markdown("##### Scans by threat level")
+        bar_chart.bar_chart(chart_data, color="#168a91")
+
+        pie_chart.markdown("##### Threat level share")
+        if stats["total_scans"] == 0:
+            pie_chart.info("No scan data to chart yet.")
+        else:
+            levels = list(stats["counts_per_level"].keys())
+            counts = [stats["counts_per_level"][level] for level in levels]
+            colors = ["#65bd76", "#e2ad2a", "#e67e22", "#d9534f"]
+
+            figure, axis = plt.subplots(figsize=(6.2, 4.4))
+            wedges, labels, percentages = axis.pie(
+                counts,
+                colors=colors,
+                autopct=lambda value: f"{value:.1f}% " if value >= 5 else "",
+                startangle=90,
+                pctdistance=0.78,
+                wedgeprops={
+                    "width": 0.38,
+                    "linewidth": 2,
+                    "edgecolor": "#090a08",
+                },
+                textprops={"color": "#f3f0e6"},
+            )
+            for percentage in percentages:
+                percentage.set_fontsize(9)
+                percentage.set_fontweight("bold")
+
+            axis.text(
+                0,
+                0.08,
+                str(stats["total_scans"]),
+                ha="center",
+                va="center",
+                fontsize=24,
+                fontweight="bold",
+                color="#ffffff",
+            )
+            axis.text(
+                0,
+                -0.16,
+                "TOTAL SCANS",
+                ha="center",
+                va="center",
+                fontsize=8,
+                fontweight="bold",
+                color="#aaa597",
+            )
+
+            legend = axis.legend(
+                wedges,
+                [f"{level}  ({count})" for level, count in zip(levels, counts)],
+                loc="lower center",
+                bbox_to_anchor=(0.5, -0.18),
+                ncol=2,
+                frameon=False,
+                fontsize=9,
+                labelcolor="#e8e4d8",
+                handlelength=1.2,
+                columnspacing=1.5,
+            )
+            for text in legend.get_texts():
+                text.set_fontweight("semibold")
+
+            figure.patch.set_facecolor("#090a08")
+            axis.set_facecolor("#090a08")
+            axis.axis("equal")
+            pie_chart.pyplot(figure, width="stretch")
+            plt.close(figure)
