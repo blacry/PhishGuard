@@ -24,6 +24,7 @@ If you encounter a word you don't understand, look it up here.
 | **False positive** | When something safe IS flagged as phishing. The tool says "danger" but it's actually fine. |
 | **Precision** | Of the items the detector flags, the share labeled positive in the evaluation set. |
 | **Recall** | Of the positive items in the evaluation set, the share the detector flags. |
+| **F1 score** | A combined measure of precision and recall. It is low when either measure is low, and is zero when both are zero. |
 | **f-string** | A Python string that lets you embed variables: `f"Score is {score}"`. The `f` before the quote enables this. |
 | **Function** | A reusable block of code that takes inputs (parameters), does something, and returns an output. Defined with `def`. |
 | **GUI** | Graphical User Interface — a visual interface with buttons, windows, etc. PhishGuard uses CLI, not GUI. |

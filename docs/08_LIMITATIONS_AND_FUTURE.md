@@ -66,6 +66,10 @@ requests to OpenPhish/GitHub, but does not transmit the URL being scanned.
 The included 10-case benchmark is hand-authored and closely aligned with the
 rules. Its measured 100% exact-label agreement is useful as a regression
 check only, not as a real-world false-positive or false-negative rate.
+The benchmark tool can evaluate a separate labeled CSV and report URL and
+message results separately, but it does not verify the dataset's provenance,
+license, representativeness, or labels. No independent evaluation corpus is
+currently included.
 
 ---
 
@@ -86,7 +90,7 @@ check only, not as a real-world false-positive or false-negative rate.
 |---------|-----------|---------|
 | Add independently reviewed threat-intelligence providers | Medium | Broader, measured feed coverage |
 | Typosquatting detection (googIe.com vs google.com) | Medium | Catch lookalike domains |
-| Independently labeled, representative evaluation corpus | Medium | Measure real-world precision, recall, and calibration |
+| Obtain and document an independently labeled evaluation corpus, then run it with `python -m utils.benchmark --dataset PATH` | Medium | Measure performance beyond the rule-aligned regression examples |
 | GUI with Tkinter | Medium | More user-friendly |
 
 ### Long-term (Advanced / Out of Scope)

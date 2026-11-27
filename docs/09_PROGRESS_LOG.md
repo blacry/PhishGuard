@@ -289,4 +289,22 @@ This log tracks what was built, when, and why. Updated after every task.
 - Documented why the CI workflow uses YAML: it is GitHub Actions'
   configuration file, not part of the Python application.
 
+---
+
+## 2026-11-27 — Phase 7: Detection Evaluation
+
+### What Was Done
+- Extended the static benchmark to accept a separate labeled CSV with
+  `python -m utils.benchmark --dataset PATH`, while keeping the hand-authored
+  regression set as the default.
+- Added per-input-type (URL/message) accuracy, alert precision/recall/F1,
+  and clear output identifying the evaluated dataset.
+- Kept a visible limitation in the report and docs: the tool cannot verify
+  provenance, licensing, representativeness, or label quality, and no
+  independent corpus is included yet.
+- Documented the exact CSV schema, invocation, metric meanings, and remaining
+  need for a suitable independently labeled dataset.
+- Verified 54 tests passed, including external-CSV and no-positive-case metric
+  handling; the default benchmark, compilation, and whitespace checks passed.
+
 

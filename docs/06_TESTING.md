@@ -92,9 +92,25 @@ Run the local benchmark separately with:
 python -m utils.benchmark
 ```
 
-The benchmark currently covers 10 hand-authored regression examples. Its
-100% exact-label result is not representative evidence of real-world
-precision or recall. A larger independently labeled corpus is required.
+This runs the 10-case hand-authored regression set. The evaluator also accepts
+another labeled CSV:
+
+```powershell
+python -m utils.benchmark --dataset data\evaluation_cases.csv
+```
+
+The CSV header must be exactly
+`input_type,input,expected_threat_level,description`; input types are `url` or
+`message`, and expected labels are `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+The report breaks down exact-label accuracy and binary alert metrics by input
+type. It applies only static rules and never visits submitted URLs. The tool
+does not check who created the dataset or whether its labels are reliable, so
+record the source, license, and labeling method separately before using a
+corpus to make performance claims.
+
+The default 10-case set is hand-authored regression coverage. Its 100%
+exact-label result is not representative evidence of real-world precision or
+recall; an independent, representative labeled corpus is still needed.
 
 ---
 

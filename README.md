@@ -133,8 +133,22 @@ Run the local labeled-case benchmark (static heuristics only) with:
 python -m utils.benchmark
 ```
 
-The current 10-case dataset is hand-authored regression coverage, not a
-representative estimate of real-world precision or recall.
+This uses the 10-case hand-authored regression dataset. To evaluate another
+labeled CSV, use:
+
+```powershell
+python -m utils.benchmark --dataset data\evaluation_cases.csv
+```
+
+The CSV must have the header
+`input_type,input,expected_threat_level,description`; input type must be
+`url` or `message`, and labels must be `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+The report includes exact-label accuracy, alert precision/recall/F1,
+false-positive and false-negative counts, a confusion matrix, and metrics
+separately for URLs and messages. The evaluator uses static rules only and
+never visits URLs. It does not verify dataset provenance or label quality:
+the default 10 cases are regression examples, not a representative estimate
+of real-world performance.
 
 ## Container Deployment
 

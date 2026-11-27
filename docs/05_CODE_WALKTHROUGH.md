@@ -139,11 +139,11 @@ not required.
 - `utils/keywords.py` checks the CSV header, allowed categories, duplicate
   category/keyword pairs, non-empty descriptions, and positive weights before
   scanner code uses the data.
-- `utils/benchmark.py` evaluates `data/test_cases.csv` and reports exact
-  classification accuracy, binary alert precision/recall, false positives,
-  false negatives, and a confusion matrix. Run it with
-  `python -m utils.benchmark`. This small hand-authored regression set does
-  not estimate real-world performance.
+- `utils/benchmark.py` evaluates a labeled CSV and reports exact
+  classification accuracy, alert precision/recall/F1, false positives,
+  false negatives, a confusion matrix, and separate URL/message metrics.
+  Run `python -m utils.benchmark`; pass `--dataset PATH` to evaluate another
+  CSV. The benchmark does not verify dataset provenance or label quality.
 - `Dockerfile` and `compose.yaml` provide an interactive, non-root deployment
   with persistent data and chart volumes. The image excludes local scan
   databases and feed caches.
