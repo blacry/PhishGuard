@@ -9,4 +9,3 @@ message,Hello how are you doing today?,LOW,Normal message with no indicators (Sc
 message,URGENT: Your bank account will be closed within 24 hours. Send payment immediately,HIGH,Urgency (15) + Threat (20) + Financial request (25) (Score: 60 -> HIGH)
 message,Please update your billing information at https://example.com/billing,MEDIUM,Financial request (25) with legitimate HTTPS link (Score: 25 -> MEDIUM)
 message,Congratulations! You won a free gift card. Claim your prize now!,MEDIUM,Financial keyword gift card (Score: 25 -> MEDIUM)
-

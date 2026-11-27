@@ -16,9 +16,9 @@ Python concepts used:
 
 
 import re
-import os
-import csv
+import ipaddress
 from urllib.parse import urlparse
+from utils.keywords import load_category_keywords
 
 
 # Default keywords to use if keywords.csv is missing or unreachable
@@ -33,27 +33,9 @@ def _load_url_keywords():
     Helper function to load 'suspicious_url_words' from data/keywords.csv.
     If the file cannot be opened, returns DEFAULT_SUSPICIOUS_URL_WORDS.
     """
-    # Look for keywords.csv in the ../data directory relative to this file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    keywords_path = os.path.join(current_dir, "..", "data", "keywords.csv")
-
-    keywords = []
-    if os.path.exists(keywords_path):
-        try:
-            with open(keywords_path, mode="r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row.get("category", "").strip() == "suspicious_url_words":
-                        word = row.get("keyword", "").strip().lower()
-                        if word:
-                            keywords.append(word)
-        except Exception:
-            # If reading fails, fall back to defaults
-            keywords = DEFAULT_SUSPICIOUS_URL_WORDS
-    else:
-        keywords = DEFAULT_SUSPICIOUS_URL_WORDS
-
-    return keywords if keywords else DEFAULT_SUSPICIOUS_URL_WORDS
+    return load_category_keywords(
+        "suspicious_url_words", DEFAULT_SUSPICIOUS_URL_WORDS
+    )
 
 
 def check_https(url):
@@ -101,14 +83,12 @@ def check_ip_address(url):
     """
     # Prepend scheme if missing so urlparse extracts netloc correctly
     to_parse = url if "://" in url else "http://" + url
-    parsed = urlparse(to_parse)
-
-    # Extract hostname, ignoring any trailing port (e.g. 192.168.1.1:8080 -> 192.168.1.1)
-    hostname = parsed.netloc.split(":")[0].strip()
-
-    # IPv4 regex pattern: 4 numbers separated by dots (e.g. 192.168.1.1)
-    ip_pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
-    is_ip = bool(re.match(ip_pattern, hostname))
+    try:
+        hostname = urlparse(to_parse).hostname or ""
+        ipaddress.ip_address(hostname)
+        is_ip = True
+    except (ValueError, UnicodeError):
+        is_ip = False
 
     if is_ip:
         return {

@@ -1,121 +1,232 @@
-"""
-helpers.py — Utility functions for file I/O and statistics.
+"""SQLite-backed scan history with optional encryption for submitted input."""
 
-This module handles "side tasks" that aren't part of the core
-detection logic but are essential for the app to work:
-    - Saving scan results to a CSV file (persistent history)
-    - Reading scan history back from the CSV
-    - Generating summary statistics from past scans
-
-Python concepts used:
-    - File handling (open, read, write) with the csv module
-    - os.path for file path management
-    - datetime for timestamps
-    - Basic math for statistics (count, average)
-"""
-
-
+import logging
 import os
-import csv
-from datetime import datetime
+import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+
+from cryptography.fernet import Fernet, InvalidToken
+
+logger = logging.getLogger(__name__)
+MAX_STORED_INPUT_CHARACTERS = 4096
+SCHEMA_VERSION = 3
 
 
-def _get_history_path():
-    """
-    Helper function to get the absolute path to data/scan_history.csv.
-    """
+def _get_database_path():
+    """Return the SQLite database path."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "data", "scan_history.csv")
+    return os.path.join(current_dir, "..", "data", "scan_history.sqlite3")
+
+
+def _get_retention_days():
+    value = os.environ.get("PHISHGUARD_RETENTION_DAYS", "90")
+    try:
+        days = int(value)
+    except ValueError as exc:
+        raise ValueError("PHISHGUARD_RETENTION_DAYS must be a positive integer") from exc
+    if days < 1:
+        raise ValueError("PHISHGUARD_RETENTION_DAYS must be a positive integer")
+    return days
+
+
+def _get_fernet():
+    key = os.environ.get("PHISHGUARD_ENCRYPTION_KEY")
+    if not key:
+        return None
+    try:
+        return Fernet(key.encode("ascii"))
+    except (ValueError, UnicodeEncodeError) as exc:
+        raise ValueError("PHISHGUARD_ENCRYPTION_KEY is not a valid Fernet key") from exc
+
+
+def _record_audit_event(connection, action, details):
+    connection.execute(
+        "INSERT INTO audit_events (timestamp, action, details) VALUES (?, ?, ?)",
+        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), action, details),
+    )
+
+
+def _prune_expired_scans(connection):
+    cutoff = (datetime.now() - timedelta(days=_get_retention_days())).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    deleted = connection.execute(
+        "DELETE FROM scans WHERE timestamp < ?", (cutoff,)
+    ).rowcount
+    connection.execute("DELETE FROM audit_events WHERE timestamp < ?", (cutoff,))
+    if deleted:
+        _record_audit_event(
+            connection, "retention_pruned", f"Removed {deleted} expired scan record(s)."
+        )
+
+
+def _initialize_database(connection):
+    schema_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    if schema_version > SCHEMA_VERSION:
+        raise RuntimeError(
+            f"Database schema version {schema_version} is newer than supported version {SCHEMA_VERSION}"
+        )
+
+    if schema_version == 0:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS scans (
+                id INTEGER PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                input_type TEXT NOT NULL,
+                input_ciphertext BLOB,
+                risk_score INTEGER NOT NULL,
+                threat_level TEXT NOT NULL,
+                indicators TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS audit_events (
+                id INTEGER PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT NOT NULL
+            );
+            """
+        )
+        connection.execute("PRAGMA user_version = 1")
+        schema_version = 1
+
+    if schema_version == 1:
+        connection.execute(
+            "ALTER TABLE scans ADD COLUMN reputation_status TEXT NOT NULL DEFAULT 'not_checked'"
+        )
+        connection.execute(
+            "ALTER TABLE scans ADD COLUMN reputation_source TEXT NOT NULL DEFAULT 'none'"
+        )
+        connection.execute("PRAGMA user_version = 2")
+        schema_version = 2
+
+    if schema_version == 2:
+        connection.execute("DROP TABLE IF EXISTS storage_metadata")
+        connection.execute("PRAGMA user_version = 3")
+        schema_version = 3
+
+    if schema_version != SCHEMA_VERSION:
+        raise RuntimeError(f"No migration path from database schema {schema_version}")
+
+
+@contextmanager
+def _connect_database():
+    database_path = _get_database_path()
+    os.makedirs(os.path.dirname(database_path), exist_ok=True)
+    connection = sqlite3.connect(database_path, timeout=10)
+    connection.row_factory = sqlite3.Row
+    try:
+        _initialize_database(connection)
+        connection.commit()
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        logger.exception("SQLite history operation failed")
+        raise
+    finally:
+        connection.close()
+
+
+def _encrypt_input(raw_input):
+    fernet = _get_fernet()
+    if fernet is None or raw_input is None:
+        return None
+    bounded_input = str(raw_input)[:MAX_STORED_INPUT_CHARACTERS]
+    return fernet.encrypt(bounded_input.encode("utf-8"))
 
 
 def save_scan(scan_result):
-    """
-    Save a single scan result to the CSV history file.
-
-    Takes:   scan_result (dict) - must contain:
-             {"input_type": str, "input": str,
-              "risk_score": int, "threat_level": str, "indicators": str}
-             Optional: "timestamp" (defaults to current time if missing).
-    Returns: bool - True if saved successfully, False if there was an error.
-
-    How it works:
-        1. Open data/scan_history.csv in append mode ("a").
-        2. If the file is newly created or empty, write the CSV header row.
-        3. Write one new row containing the scan record.
-        4. Close the file cleanly.
-    """
+    """Persist scan metadata and encrypt input only when a key is configured."""
     if not isinstance(scan_result, dict):
         return False
 
-    history_path = _get_history_path()
-    fieldnames = ["timestamp", "input_type", "input", "risk_score", "threat_level", "indicators"]
-
-    # Provide automatic timestamp if omitted
-    timestamp = scan_result.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    # Sanitize input: truncate long messages to keep CSV readable,
-    # and ensure clean one-line representation (replace newlines)
-    raw_input = str(scan_result.get("input", "")).replace("\n", " ").strip()
-    if len(raw_input) > 80:
-        clean_input = raw_input[:77] + "..."
-    else:
-        clean_input = raw_input
-
-    row_data = {
-        "timestamp": timestamp,
-        "input_type": str(scan_result.get("input_type", "unknown")),
-        "input": clean_input,
-        "risk_score": int(scan_result.get("risk_score", 0)),
-        "threat_level": str(scan_result.get("threat_level", "LOW")),
-        "indicators": str(scan_result.get("indicators", ""))
-    }
-
     try:
-        # Check if file exists and has content to know if header is needed
-        file_exists = os.path.exists(history_path)
-        is_empty = (os.path.getsize(history_path) == 0) if file_exists else True
-
-        with open(history_path, mode="a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            if is_empty:
-                writer.writeheader()
-            writer.writerow(row_data)
-
+        encrypted_input = _encrypt_input(scan_result.get("input"))
+        timestamp = scan_result.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with _connect_database() as connection:
+            connection.execute(
+                """INSERT INTO scans
+                   (timestamp, input_type, input_ciphertext, risk_score, threat_level, indicators,
+                    reputation_status, reputation_source)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    str(timestamp),
+                    str(scan_result.get("input_type", "unknown")),
+                    encrypted_input,
+                    int(scan_result.get("risk_score", 0)),
+                    str(scan_result.get("threat_level", "LOW")),
+                    str(scan_result.get("indicators", "")),
+                    str(scan_result.get("reputation_status", "not_checked")),
+                    str(scan_result.get("reputation_source", "none")),
+                ),
+            )
+            _prune_expired_scans(connection)
+            _record_audit_event(connection, "scan_saved", "Stored one scan record.")
         return True
-    except Exception:
-        # Fail gracefully if file permissions or filesystem prevents write
+    except (OSError, sqlite3.Error, TypeError, ValueError, UnicodeError):
+        logger.exception("Could not save scan history record")
         return False
 
 
 def load_scan_history():
-    """
-    Read all past scan results from data/scan_history.csv.
-
-    Takes:   Nothing.
-    Returns: list of dicts - each dict represents one scan record.
-             Returns empty list if file doesn't exist or is empty.
-    """
-    history_path = _get_history_path()
-    if not os.path.exists(history_path):
-        return []
-
-    records = []
+    """Load scan history; input content is redacted unless it can be decrypted."""
     try:
-        with open(history_path, mode="r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                records.append(row)
-    except Exception:
+        fernet = _get_fernet()
+        with _connect_database() as connection:
+            _prune_expired_scans(connection)
+            rows = connection.execute(
+                """SELECT timestamp, input_type, input_ciphertext, risk_score, threat_level, indicators,
+                          reputation_status, reputation_source
+                   FROM scans ORDER BY id"""
+            ).fetchall()
+        records = []
+        for row in rows:
+            ciphertext = row["input_ciphertext"]
+            if ciphertext is None:
+                display_input = "[not stored]"
+            elif fernet is None:
+                display_input = "[encrypted; key unavailable]"
+            else:
+                try:
+                    display_input = fernet.decrypt(ciphertext).decode("utf-8")
+                except (InvalidToken, UnicodeError):
+                    logger.warning("A stored scan input could not be decrypted")
+                    display_input = "[encrypted; key unavailable]"
+            records.append({
+                "timestamp": row["timestamp"],
+                "input_type": row["input_type"],
+                "input": display_input,
+                "risk_score": str(row["risk_score"]),
+                "threat_level": row["threat_level"],
+                "indicators": row["indicators"],
+                "reputation_status": row["reputation_status"],
+                "reputation_source": row["reputation_source"],
+            })
+        return records
+    except (OSError, sqlite3.Error, ValueError):
+        logger.exception("Could not load scan history")
         return []
 
-    return records
+
+def delete_scan_history():
+    """Delete all scan records while retaining a content-free deletion audit event."""
+    try:
+        with _connect_database() as connection:
+            deleted = connection.execute("DELETE FROM scans").rowcount
+            _record_audit_event(connection, "history_deleted", f"Deleted {deleted} scan record(s).")
+        return deleted
+    except (OSError, sqlite3.Error):
+        logger.exception("Could not delete scan history")
+        return None
 
 
 def generate_statistics():
     """
     Read scan history and compute summary statistics.
 
-    Takes:   Nothing (reads from data/scan_history.csv).
+    Takes:   Nothing (reads from the local SQLite database).
     Returns: dict - {"total_scans": int,
                       "url_scans": int,
                       "message_scans": int,
@@ -162,73 +273,4 @@ def generate_statistics():
         "average_risk_score": avg_score,
         "threat_distribution": threat_dist
     }
-
-
-def save_threat_distribution_chart(output_path=None):
-    """
-    Generate and save visual analytics charts using matplotlib and pandas.
-    Saves a clean two-panel chart (Threat Distribution Bar Chart + Scan Types Pie Chart)
-    to visualizations/threat_distribution.png.
-
-    Takes:   output_path (str, optional) - custom save location.
-    Returns: str - path to saved image file, or None if no data to plot.
-    """
-    records = load_scan_history()
-    if not records:
-        return None
-
-    import matplotlib
-    matplotlib.use("Agg")  # Non-interactive backend safe for CLI scripts
-    import matplotlib.pyplot as plt
-    import pandas as pd
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    if not output_path:
-        viz_dir = os.path.join(current_dir, "..", "visualizations")
-        os.makedirs(viz_dir, exist_ok=True)
-        output_path = os.path.join(viz_dir, "threat_distribution.png")
-
-    df = pd.DataFrame(records)
-
-    # Convert risk_score to numeric
-    df["risk_score"] = pd.to_numeric(df["risk_score"], errors="coerce").fillna(0)
-
-    # Prepare Threat Distribution counts
-    levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-    counts = [sum(df["threat_level"].str.upper() == lvl) for lvl in levels]
-    colors = ["#2ecc71", "#f39c12", "#e67e22", "#e74c3c"]
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("PhishGuard Security Analytics", fontsize=16, fontweight="bold", y=1.02)
-
-    # 1. Bar Chart: Threat Levels
-    bars = ax1.bar(levels, counts, color=colors, edgecolor="#333333", linewidth=1.2)
-    ax1.set_title("Threat Level Classification", fontsize=12, pad=10)
-    ax1.set_ylabel("Number of Scans", fontsize=10)
-    ax1.set_xlabel("Threat Level", fontsize=10)
-    ax1.grid(axis="y", linestyle="--", alpha=0.5)
-
-    # Add numeric labels on top of bars
-    for bar in bars:
-        height = bar.get_height()
-        ax1.annotate(f"{int(height)}",
-                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3),
-                     textcoords="offset points",
-                     ha="center", va="bottom", fontsize=10, fontweight="bold")
-
-    # 2. Pie Chart: Input Type Distribution
-    type_counts = df["input_type"].str.lower().value_counts()
-    labels = [t.title() for t in type_counts.index]
-    ax2.pie(type_counts, labels=labels, autopct="%1.1f%%", startangle=140,
-            colors=["#3498db", "#9b59b6"][:len(type_counts)],
-            wedgeprops={"edgecolor": "#333333", "linewidth": 1.2})
-    ax2.set_title("Scans by Input Type", fontsize=12, pad=10)
-
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
-
-    return output_path
-
 

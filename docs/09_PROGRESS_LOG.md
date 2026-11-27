@@ -159,5 +159,134 @@ This log tracks what was built, when, and why. Updated after every task.
 
 
 
+---
+
+## 2026-11-24 — Phase 1: URL Validation and Test Setup
+
+### What Was Done
+- Hardened URL validation for allowed schemes, whitespace, credentials,
+  malformed hosts/ports, IPv4/IPv6, and internationalized hostnames.
+- Updated IP detection to use Python's `ipaddress` parser.
+- Added adversarial URL tests and pinned the project dependencies.
+- Verified the suite: 31 tests passed.
+
+### Decisions Made
+- Only HTTP(S) URLs are accepted for scanning.
+- URLs containing user credentials are rejected rather than parsed as ordinary
+  hostnames.
+
+---
+
+## 2026-11-27 — Phase 2: Local Storage and Input Privacy
+
+### What Was Done
+- Replaced new CSV writes with a versioned SQLite schema and one-time,
+  metadata-only import of existing CSV history.
+- Input is omitted by default; optional Fernet encryption is controlled by
+  `PHISHGUARD_ENCRYPTION_KEY` and stored input is capped at 4,096 characters.
+- Added 90-day configurable retention, content-free audit events, a confirmed
+  history-delete action, and SQLite schema migrations.
+- Updated privacy, setup, and architecture documentation; ignored local
+  database files.
+- Verified the suite: 37 tests passed.
+
+### Data Handling Note
+- The legacy CSV was retained at this phase and removed from the working tree
+  in Phase 6. Earlier Git commits or backups may still contain copies.
+
+---
+
+## 2026-11-27 — Phase 3: Detection Quality
+
+### What Was Done
+- Added shared validation for keyword CSV headers, categories, duplicate
+  entries, descriptions, weights, and malformed rows. Invalid configured data
+  now raises a clear error; a missing file logs a warning before using built-in
+  defaults.
+- Added an opt-in OpenPhish Community Feed integration. It downloads only the
+  public feed and performs exact normalized URL matching locally; it never
+  transmits scanned URLs. Feed data is cached for 12 hours, refresh attempts
+  are rate-limited, responses have a 10-second timeout and size limit, and
+  stale/unavailable data does not produce a clean verdict.
+- Kept reputation separate from the static 0–100 heuristic score. A fresh
+  exact feed match raises the display classification to CRITICAL; stale
+  feed matches remain unknown. Results are stored in dedicated SQLite fields
+  (schema v2).
+- Added a local benchmark reporting exact-label accuracy, alert precision and
+  recall, false positives/negatives, and a confusion matrix.
+- Verified the suite: 47 tests passed.
+
+### Benchmark Result and Caveat
+- The 10 hand-authored regression cases currently show 100% exact-label
+  agreement, 100% binary alert precision/recall, and zero false positives or
+  negatives.
+- These cases are rule-aligned regression examples, not an independent or
+  representative dataset; the results do not estimate real-world performance.
+
+### Source Selection
+- The retired URLhaus legacy download endpoint returned HTTP 410, and its
+  current community API requires an Auth-Key. The implementation uses
+  OpenPhish's documented community feed instead. See the
+  [feed details](https://openphish.com/phishing_feeds.html) and its
+  [Terms of Use](https://openphish.com/terms.html).
+
+---
+
+## 2026-11-27 — Phase 4: CLI Usability
+
+### What Was Done
+- Hardened interactive prompts so EOF and Ctrl+C cancel safely instead of
+  surfacing tracebacks. Interrupted input at the main menu exits cleanly;
+  interruptions within a scan or delete prompt cancel that action.
+- Kept deletion fail-safe: scan history is deleted only after an explicit
+  affirmative confirmation.
+- Added focused CLI interaction tests and documented platform-specific
+  end-of-input keys.
+- Updated the feed documentation to distinguish fresh matches from stale
+  cached entries.
+- Verified the suite: 53 tests passed; the benchmark, compilation, CLI exit
+  smoke test, and whitespace check also passed.
+
+---
+
+## 2026-11-27 — Phase 5: Deployment and Code Cleanup
+
+### What Was Done
+- Added a non-root Docker image and interactive Compose service with persistent
+  volumes for scan data and generated charts. The image exposes no ports and
+  excludes local history, runtime caches, tests, and documentation.
+- Split test tooling into `requirements-dev.txt` and kept runtime dependencies
+  in `requirements.txt`.
+- Removed the unused pandas dependency and moved chart rendering to
+  `utils/charts.py`, using standard-library counters and keeping SQLite
+  operations in `utils/helpers.py`.
+- Simplified redundant comments and instructional boilerplate in `main.py`.
+- At that time, retained the existing CSV migration; Phase 6 later retires it
+  after SQLite became the sole scan-history store.
+- Verified 54 tests, the benchmark, compilation, and whitespace checks. Docker
+  is not installed in the development environment, so the image could not be
+  built here.
+
+---
+
+## 2026-11-27 — Phase 6: SQLite-Only History and CI
+
+### What Was Done
+- Removed the obsolete CSV history importer and deleted
+  `data/scan_history.csv`; new history was already stored in SQLite.
+- Added schema v3 migration to remove the now-unused metadata table while
+  preserving existing SQLite scan records.
+- Split message-scanner tests into `tests/test_message_scanner.py`; retained
+  the active threat-language, credential, and other detection tests.
+- Added GitHub Actions checks for pytest, the benchmark, and Docker image
+  builds on pushes and pull requests.
+- Updated the project, architecture, algorithm, indicator, walkthrough,
+  testing, viva, limitation, and glossary docs to reflect current behavior.
+- Verified 53 tests, the benchmark, compilation, CLI smoke test, and diff
+  checks. The workflow is configured but could not be run locally; Docker is
+  unavailable in this environment. Removing the CSV from this tree does not
+  rewrite earlier Git history or backups.
+- Documented why the CI workflow uses YAML: it is GitHub Actions'
+  configuration file, not part of the Python application.
 
 

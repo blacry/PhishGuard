@@ -30,5 +30,11 @@ dist/
 build/
 *.egg-info/
 
-# Data files that may contain sensitive info (keep headers, ignore data)
-# Note: We DO track scan_history.csv (header only) and keywords.csv
+# Docker local overrides
+.env
+
+# Local scan database and SQLite journal files
+data/scan_history.sqlite3*
+data/openphish_cache.json
+
+# Keyword and benchmark CSV files are tracked project data

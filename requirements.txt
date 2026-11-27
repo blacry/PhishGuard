@@ -1,3 +1,2 @@
-pandas
-matplotlib
-pytest
+matplotlib==3.10.7
+cryptography==46.0.3

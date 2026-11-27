@@ -43,34 +43,43 @@ User Input (URL or Message)
          ▼
 ┌─────────────────────────────────┐
 │          UTILS                  │
-│  helpers.py (save to CSV)       │  ← The clerk: saves records
+│  helpers.py (save to SQLite)    │  ← The clerk: saves records
 │  validators.py (check input)    │  ← The bouncer: validates input
 └────────┬────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────┐
-│     data/scan_history.csv       │  ← The filing cabinet: stores results
+│  data/scan_history.sqlite3      │  ← Local database; content is redacted by default
 └─────────────────────────────────┘
 ```
+
+The optional `reputation.py` feed checker runs separately from static scanner
+indicators. It downloads feed data only and performs exact URL matching locally.
 
 ---
 
 ## Data Flow (Step by Step)
 
-1. **User starts the app** → `main.py` shows the menu.
+1. **User starts the app** → `main.py` shows the menu and handles EOF or
+   Ctrl+C without an unhandled traceback.
 2. **User picks option 1 (URL)** → `main.py` reads the URL.
 3. **Validation** → `validators.py` checks if it's actually a URL.
 4. **Scanning** → `url_scanner.scan_url()` runs all 6 checks.
    Each check returns a dict: `{indicator, triggered, detail}`.
-5. **Scoring** → `risk_engine.calculate_risk_score()` adds up weights
+5. **Optional reputation** → `reputation.lookup_url_reputation()` checks
+    an exact URL against a locally cached OpenPhish feed. It downloads feed
+    data only; the submitted URL is not sent to the provider.
+6. **Scoring** → `risk_engine.calculate_risk_score()` adds up weights
    of triggered indicators. Caps at 100.
-6. **Classification** → `risk_engine.classify_threat()` maps score to label.
-7. **Explanation** → `recommendation_engine.generate_explanation()` builds
+7. **Classification** → `risk_engine.classify_with_reputation()` keeps the
+    heuristic score separate and raises a fresh exact feed match to CRITICAL.
+8. **Explanation** → `recommendation_engine.generate_explanation()` builds
    a human-readable text from the triggered indicators.
-8. **Recommendations** → `recommendation_engine.generate_recommendations()`
+9. **Recommendations** → `recommendation_engine.generate_recommendations()`
    picks safety tips based on the threat level.
-9. **Display** → `main.py` prints everything to the user.
-10. **Save** → `helpers.save_scan()` appends a row to `scan_history.csv`.
+10. **Display** → `main.py` prints static and reputation results separately.
+11. **Save** → `helpers.save_scan()` stores scan metadata in SQLite. Input
+    content is omitted unless a Fernet encryption key is configured.
 
 ---
 
@@ -94,17 +103,41 @@ User Input (URL or Message)
 
 | File | Purpose |
 |------|---------|
-| `main.py` | CLI menu, input routing, display results |
+| `main.py` | CLI menu, input routing, cancellation, display results |
 | `scanners/url_scanner.py` | 6 URL structural checks |
 | `scanners/message_scanner.py` | 4 message language checks + URL extraction |
 | `engine/risk_engine.py` | Weighted score calculation + threat classification |
 | `engine/recommendation_engine.py` | Human-readable explanations + safety tips |
 | `utils/validators.py` | Input validation (is it a URL? is it a message?) |
-| `utils/helpers.py` | CSV save/load + statistics computation |
+| `utils/helpers.py` | SQLite history, retention, deletion, audit records, statistics |
+| `utils/charts.py` | Threat-level and scan-type chart exports |
+| `utils/keywords.py` | Keyword CSV validation and loading |
+| `utils/benchmark.py` | Reproducible local classification metrics |
+| `scanners/reputation.py` | Optional cached exact-URL reputation lookup |
 | `data/keywords.csv` | Phishing keyword database with categories and weights |
 | `data/test_cases.csv` | Pre-built inputs with expected results for testing |
-| `data/scan_history.csv` | Append-only log of all scan results |
-| `tests/test_scanner.py` | pytest unit tests for all modules |
+| `data/openphish_cache.json` | Ignored local cache of public phishing-feed data |
+| `data/scan_history.sqlite3` | Local scan history and content-free audit events |
+| `tests/test_scanner.py` | URL, validation, risk, and history tests |
+| `tests/test_message_scanner.py` | Message-language and URL-extraction tests |
+| `tests/test_storage.py` | SQLite privacy, retention, and schema-migration tests |
+| `tests/test_reputation.py` | Offline tests with mocked feed responses |
+| `tests/test_keywords.py` | Keyword CSV validation tests |
+| `tests/test_benchmark.py` | Labeled-case evaluation tests |
+| `.github/workflows/ci.yml` | Automated tests, benchmark, and image build |
+
+## Container Deployment
+
+`Dockerfile` installs runtime dependencies and runs PhishGuard as a non-root
+user. `compose.yaml` keeps the CLI interactive and stores the SQLite database,
+feed cache, and exported charts in named volumes. The image exposes no ports.
+`.dockerignore` excludes local scan history and runtime caches from the build
+context. Scan history is SQLite-only; the previous CSV migration was removed.
+
+GitHub Actions runs the test suite and benchmark on pushes, pull requests, or
+manual requests, and builds the Docker image as a separate CI job. The
+workflow is described in `.github/workflows/ci.yml`; YAML is a human-readable
+configuration format, not a language used by the PhishGuard application.
 
 ---
 

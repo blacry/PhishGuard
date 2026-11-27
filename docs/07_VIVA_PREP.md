@@ -15,8 +15,8 @@ visiting any links. It gives a risk score (0-100), classifies the threat
 (LOW to CRITICAL), explains what triggered, and gives safety tips.
 
 ### Q2: Why did you choose this project?
-**A:** Phishing is the #1 cyberattack method — over 80% of breaches start
-with phishing. I wanted to build something that solves a real problem while
+**A:** Phishing is a common way attackers try to steal information or money.
+I wanted to build something that demonstrates a real security problem while
 learning Python fundamentals like string manipulation, file handling, and
 modular programming.
 
@@ -40,7 +40,7 @@ no keywords might slip through.
 **A:** The project has three main layers:
 1. **Scanners** (`scanners/`) — check for phishing indicators
 2. **Engine** (`engine/`) — calculate score, classify threat, generate explanation
-3. **Utils** (`utils/`) — validate input, save to CSV, compute statistics
+3. **Utils** (`utils/`) — validate input, save to SQLite, compute statistics
 
 Data flows: User Input → Validation → Scanners → Engine → Display + Save.
 
@@ -108,7 +108,7 @@ maps indicator names to their numeric weights.
 
 ### Q15: Explain the `while True` loop in main.py.
 **A:** `while True` creates an infinite loop — it runs forever. We use
-`break` to stop it when the user picks option 5 (Exit). This is a common
+`break` to stop it when the user picks option 6 (Exit). This is a common
 pattern for CLI menus because we don't know in advance how many times
 the user will want to use the menu.
 
@@ -118,22 +118,30 @@ the user will want to use the menu.
 `192.168.1.1`. We use the `re` module in Python to match these patterns
 in URLs and messages.
 
-### Q17: What is the difference between `"a"` and `"w"` file modes?
-**A:** `"w"` (write) erases the file and writes from scratch. `"a"` (append)
-adds to the end without erasing. We use `"a"` for scan_history.csv so
-previous scans are preserved.
+### Q17: Where is scan history stored and how is input protected?
+**A:** Scan metadata is stored in SQLite. Input text is omitted unless a
+Fernet encryption key is configured; encrypted content is capped at 4,096
+characters. Existing SQLite records are preserved during schema upgrades.
+The old CSV importer has been removed; old copies in Git history or backups
+are not changed by deleting the current CSV file.
+
+### Q18: Does the reputation check upload the URL?
+**A:** No. When explicitly enabled, PhishGuard downloads the OpenPhish
+Community Feed and checks the submitted URL locally using exact matching.
+It never sends the submitted URL to OpenPhish. No feed means an unavailable
+or unknown result, not a clean verdict.
 
 ---
 
 ## Testing Questions
 
-### Q18: How do you test your code?
+### Q19: How do you test your code?
 **A:** We use pytest. Each test function checks one specific behavior.
 For example, `test_check_https_detects_http` verifies that an HTTP URL
 triggers the HTTPS indicator. We use `assert` to check expected vs actual
-results. Run with: `pytest tests/test_scanner.py -v`.
+results. Run with: `python -m pytest -v`.
 
-### Q19: What is a false positive? A false negative?
+### Q20: What is a false positive? A false negative?
 **A:** False positive: flagging something safe as phishing (e.g., a long
 legitimate URL). False negative: missing actual phishing (e.g., a
 well-crafted phishing email with no keywords). Both are limitations of
@@ -143,17 +151,19 @@ our heuristic approach.
 
 ## Design Decision Questions
 
-### Q20: Why CLI and not a GUI?
+### Q21: Why CLI and not a GUI?
 **A:** CLI is simpler to build and debug. It focuses on the logic, not
 the interface. The project scope is about the detection algorithm, not
 UI design. A GUI could be a future enhancement.
 
-### Q21: Why don't you actually visit the URL?
+### Q22: Why don't you actually visit the URL?
 **A:** That would be dangerous. The URL might host malware, track visitors,
-or exploit browser vulnerabilities. Static analysis (looking at the URL
-string) is safe and sufficient for our heuristic approach.
+or exploit browser vulnerabilities. PhishGuard examines URL text and may
+download an optional public threat feed, but it never visits the submitted
+URL or sends it to the feed provider.
 
-### Q22: Why CSV instead of a database?
-**A:** CSV is human-readable, requires no setup, and can be opened in
-Excel. For a small project, it's simpler than SQLite. pandas can read
-CSVs easily for statistics and visualization.
+### Q23: Why SQLite for scan history?
+**A:** SQLite stores structured records locally without requiring a separate
+database server. It supports migrations, transactions, retention, and
+content-free audit events. New scan history is stored only in SQLite; the
+retired CSV importer has been removed.

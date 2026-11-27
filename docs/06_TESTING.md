@@ -15,7 +15,8 @@ We use **pytest**, a Python testing library. Test functions must start with
 
 ```bash
 cd PhishGuard
-pytest tests/test_scanner.py -v
+python -m pip install -r requirements-dev.txt
+python -m pytest -v
 ```
 
 - `-v` means verbose: shows each test name and pass/fail.
@@ -69,6 +70,32 @@ pytest tests/test_scanner.py -v
 | `test_is_valid_url_rejects_garbage` | Random text rejected | `"not a url"` | `False` |
 | `test_is_valid_message_rejects_empty` | Empty strings rejected | `""` | `False` |
 
+### 5. Production-readiness regression tests
+
+- `test_cli.py` verifies clean exit on EOF/Ctrl+C, invalid menu input handling,
+  and that interrupted scan/delete prompts cancel without processing.
+- `test_keywords.py` verifies the tracked keyword CSV and rejects duplicate or
+  malformed entries.
+- `test_reputation.py` uses a mocked feed response only; it checks URL
+  normalization, caching, timeout behavior, and that lookup requests contain
+  only the fixed feed URL—not the URL being scanned.
+- `test_storage.py` covers database migration, encryption defaults, retention,
+  deletion, and removal of the retired storage metadata table while preserving
+  existing scan rows.
+- `test_benchmark.py` runs all labeled cases through the static rules.
+- `test_visualization.py` verifies chart export from representative scan
+  records without relying on pandas.
+
+Run the local benchmark separately with:
+
+```powershell
+python -m utils.benchmark
+```
+
+The benchmark currently covers 10 hand-authored regression examples. Its
+100% exact-label result is not representative evidence of real-world
+precision or recall. A larger independently labeled corpus is required.
+
 ---
 
 ## Test Design Principles
@@ -85,16 +112,19 @@ pytest tests/test_scanner.py -v
 
 ## Current Status
 
-All **28 test functions** are fully implemented and passing:
-- 10 URL scanner tests
-- 6 Message scanner tests
-- 6 Risk & recommendation engine tests
-- 3 Input validator tests
-- 2 CSV history & statistics tests
-- 1 Batch regression test for all 10 prebuilt cases in `data/test_cases.csv`
+The suite includes URL and message scanners, risk classification, validation,
+SQLite storage, keyword validation, reputation-feed behavior, benchmark
+regressions, CLI input handling, and chart export. The exact pass count is
+reported by pytest; run:
 
-Run them anytime with:
 ```bash
 python -m pytest -v
 ```
+
+The container definition can be built with `docker compose build` when Docker
+is available. Tests remain in the development environment, not the runtime
+image.
+
+GitHub Actions runs the same test and benchmark commands on pushes and pull
+requests, and builds the container image in a separate job.
 

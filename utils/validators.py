@@ -17,6 +17,8 @@ Python concepts used:
 """
 
 
+import ipaddress
+import re
 from urllib.parse import urlparse
 
 
@@ -58,26 +60,68 @@ def is_valid_url(text):
     if not cleaned:
         return False
 
-    # URLs should not have spaces inside them
-    if " " in cleaned:
+    if re.search(r"\s", cleaned):
         return False
 
-    # If the user omitted http:// or https://, add http:// temporarily for parsing
-    url_to_parse = cleaned
-    if not (cleaned.startswith("http://") or cleaned.startswith("https://")):
+    if "://" in cleaned:
+        scheme = cleaned.split(":", 1)[0].lower()
+        if scheme not in {"http", "https"}:
+            return False
+        url_to_parse = cleaned
+    else:
+        if cleaned.startswith("//"):
+            return False
         url_to_parse = "http://" + cleaned
 
     try:
         parsed = urlparse(url_to_parse)
-        domain = parsed.netloc
+        if parsed.scheme.lower() not in {"http", "https"}:
+            return False
 
-        # We must have a domain (or IP address), and it must contain a dot
-        if not domain or "." not in domain:
+        hostname = parsed.hostname
+        if not hostname or parsed.username or parsed.password:
+            return False
+
+        parsed.port
+
+        try:
+            ipaddress.ip_address(hostname)
+            return True
+        except ValueError:
+            pass
+
+        if re.fullmatch(r"[0-9.]+", hostname):
+            return False
+
+        hostname = hostname.rstrip(".").lower()
+        if "." not in hostname:
+            return False
+
+        try:
+            ascii_hostname = hostname.encode("idna").decode("ascii")
+        except UnicodeError:
+            return False
+
+        labels = ascii_hostname.split(".")
+        if len(labels) < 2:
+            return False
+
+        for label in labels:
+            if (
+                not label
+                or len(label) > 63
+                or label.startswith("-")
+                or label.endswith("-")
+                or not re.fullmatch(r"[a-z0-9-]+", label)
+            ):
+                return False
+
+        tld = labels[-1]
+        if not (tld.isalpha() or tld.startswith("xn--")):
             return False
 
         return True
-    except Exception:
-        # If urlparse crashes on strange input, fail safely by returning False
+    except (UnicodeError, ValueError):
         return False
 
 

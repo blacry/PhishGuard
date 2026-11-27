@@ -9,8 +9,8 @@ companies (banks, Google, Amazon). These messages trick people into:
 - Entering their passwords on fake websites
 - Sending money to the attacker
 
-According to reports, over **80% of data breaches** start with a phishing
-attack. Even tech-savvy people fall for well-crafted phishing attempts.
+Phishing is a common way attackers try to steal information or money.
+Even tech-savvy people can be fooled by convincing messages.
 
 **The core question our project answers:**
 > "Given a URL or a text message, how likely is it to be a phishing attempt?"
@@ -24,7 +24,8 @@ attack. Even tech-savvy people fall for well-crafted phishing attempts.
 3. **Classify** the threat level (LOW, MEDIUM, HIGH, CRITICAL).
 4. **Explain** why each indicator fired — don't just say "danger", say WHY.
 5. **Educate** the user with safety recommendations.
-6. **Log** every scan to CSV for history and statistics.
+6. **Log** scan metadata to SQLite; submitted input is redacted by default.
+7. **Optionally check** exact URLs against a cached public phishing feed.
 
 ---
 
@@ -37,20 +38,23 @@ attack. Even tech-savvy people fall for well-crafted phishing attempts.
 - 4-tier threat classification
 - Human-readable explanations for each indicator
 - Safety recommendations based on threat level
-- CSV scan history with timestamps
+- SQLite scan history with timestamps, retention, and audit events
+- Optional OpenPhish Community Feed lookups with local caching
+- Keyword CSV schema validation
+- Local statistics and Matplotlib chart exports
 - CLI menu interface
-- Basic statistics (count, averages, distribution)
+- Graceful handling of interrupted prompts and end-of-input
+- Automated CI tests, benchmark, and Docker image build
 
 ### 🔮 Stretch Goals (if time permits)
-- Matplotlib visualizations (pie charts, bar graphs of threat distribution)
 - PDF report export
 - Batch scanning from a file
-- Domain age lookup (would need an API)
+- Broader labeled datasets and measurable false-positive/false-negative rates
 
 ### ❌ Out of Scope
 - Machine learning or AI-based detection
 - Actually visiting or opening URLs (this is UNSAFE)
-- Real-time domain reputation checks (needs internet API)
+- Automatically browsing or opening submitted URLs
 - GUI (graphical interface) — we use CLI
 - Multi-language support (English only for v1)
 - Browser extension
@@ -62,10 +66,14 @@ attack. Even tech-savvy people fall for well-crafted phishing attempts.
 | Component | Technology | Why |
 |-----------|-----------|-----|
 | Language | Python 3.x | Required by course; great for string manipulation |
-| Data handling | pandas | Easy CSV read/write and statistics |
+| Data handling | Python `csv`, SQLite | CSV keyword loading and local scan history |
 | Charts | matplotlib | Create visual summaries |
 | Testing | pytest | Simple, powerful test framework |
+| Deployment | Docker Compose | Reproducible interactive container with persistent volumes |
 | Version control | git | Track changes, required for submission |
+
+The OpenPhish feature is opt-in. It downloads the public feed; the URL being
+scanned is matched locally and is not sent to the provider.
 
 ---
 

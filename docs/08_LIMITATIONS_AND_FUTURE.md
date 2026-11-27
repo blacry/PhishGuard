@@ -52,6 +52,21 @@ PhishGuard can't know:
 We use exact keyword matching. A phisher who writes "v3rify y0ur p@ssw0rd"
 (with number substitutions) would bypass our checks.
 
+### 7. Optional reputation feed limitations
+
+The OpenPhish Community Feed is opt-in and cached locally for 12 hours.
+PhishGuard compares the full normalized URL exactly, which can miss URL
+variants and new campaigns. A fresh feed match is a separate signal, not
+proof that a page is currently active or dangerous; absence from the feed is
+never treated as proof of safety. Enabling feed refreshes makes outbound
+requests to OpenPhish/GitHub, but does not transmit the URL being scanned.
+
+### 8. Benchmark limitations
+
+The included 10-case benchmark is hand-authored and closely aligned with the
+rules. Its measured 100% exact-label agreement is useful as a regression
+check only, not as a real-world false-positive or false-negative rate.
+
 ---
 
 ## Future Work (What Could Be Added)
@@ -60,7 +75,6 @@ We use exact keyword matching. A phisher who writes "v3rify y0ur p@ssw0rd"
 
 | Feature | Difficulty | Benefit |
 |---------|-----------|---------|
-| Matplotlib charts (pie chart of threat distribution) | Easy | Visual appeal for submission |
 | PDF report export | Medium | Professional output |
 | Batch scanning from a file | Easy | Scan many URLs at once |
 | More keywords in keywords.csv | Easy | Better coverage |
@@ -70,10 +84,9 @@ We use exact keyword matching. A phisher who writes "v3rify y0ur p@ssw0rd"
 
 | Feature | Difficulty | Benefit |
 |---------|-----------|---------|
-| Domain age check via WHOIS API | Medium | New domains are suspicious |
-| Domain reputation via VirusTotal API | Medium | Check against known blacklists |
+| Add independently reviewed threat-intelligence providers | Medium | Broader, measured feed coverage |
 | Typosquatting detection (googIe.com vs google.com) | Medium | Catch lookalike domains |
-| SQLite database instead of CSV | Medium | Better for large datasets |
+| Independently labeled, representative evaluation corpus | Medium | Measure real-world precision, recall, and calibration |
 | GUI with Tkinter | Medium | More user-friendly |
 
 ### Long-term (Advanced / Out of Scope)
@@ -90,10 +103,12 @@ We use exact keyword matching. A phisher who writes "v3rify y0ur p@ssw0rd"
 
 ## Honest Assessment
 
-PhishGuard v1 is an **educational tool**, not a production security product.
-It teaches the principles of phishing detection — pattern matching, scoring,
-classification — using beginner-friendly Python. It will catch obvious
-phishing attempts but will miss sophisticated ones.
+PhishGuard is still an **educational prototype**, not a production security
+product. It combines explainable rules with an optional cached public feed,
+but needs independent labeled-data evaluation, operational monitoring, and
+broader threat-intelligence coverage before it can support production
+decisions. CI verifies the regression suite and builds the container; this
+does not replace deployment monitoring or an external security review.
 
 For real-world protection, use established tools like:
 - Google Safe Browsing

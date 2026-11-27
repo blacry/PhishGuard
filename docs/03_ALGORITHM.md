@@ -25,8 +25,17 @@ cooking recipe says "add flour, then eggs, then mix", our algorithm says
 11. **Classify** — Map the score to LOW / MEDIUM / HIGH / CRITICAL.
 12. **Explain** — Build a text explaining what triggered and why.
 13. **Recommend** — Pick safety tips based on the threat level.
-14. **Display** the results to the user.
-15. **Save** the scan to `scan_history.csv`.
+14. **Optionally look up reputation** using the locally cached OpenPhish
+    feed. Compare the normalized full URL exactly; do not send the submitted
+    URL to the provider.
+15. **Classify** an exact match in a fresh feed as CRITICAL while keeping its
+    heuristic numeric score unchanged. An absent, unavailable, or stale result
+    is not treated as proof of safety.
+16. **Explain, recommend, and display** the static analysis and reputation
+    results separately.
+17. **Save** scan metadata to SQLite. Submitted input is omitted by default;
+    when configured, the application encrypts it before storage.
+    No scan-history CSV is read or written.
 
 ### For Message Scanning:
 
@@ -37,9 +46,15 @@ cooking recipe says "add flour, then eggs, then mix", our algorithm says
 5. **Check threats** — Does it threaten the reader? Mark if yes.
 6. **Check credential requests** — Does it ask for passwords/personal info? Mark if yes.
 7. **Check financial requests** — Does it ask for money/bank details? Mark if yes.
-8. **If URLs were found** — Run the URL scanning algorithm on each one.
-9. **Combine** all message indicators + URL indicators.
-10. **Calculate score**, **classify**, **explain**, **recommend**, **display**, **save** — same as URL scanning steps 10–15.
+8. **If URLs were found** — Run the URL scanning algorithm on each one and
+   optionally check each URL against the cached reputation feed.
+9. **Combine** all message indicators and URL indicators for the heuristic
+   score. Reputation remains a separate signal.
+10. **Classify** — Use the heuristic score and let a fresh exact feed match
+    raise the displayed threat level to CRITICAL without changing that score.
+11. **Explain, recommend, and display** the results.
+12. **Save** scan metadata to SQLite; submitted text is omitted unless
+    encryption is configured.
 
 ---
 

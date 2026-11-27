@@ -78,3 +78,19 @@ These weights work well for OBVIOUS phishing attempts but can produce:
   slips through.
 
 This is expected for a heuristic system. See [08_LIMITATIONS_AND_FUTURE.md](08_LIMITATIONS_AND_FUTURE.md).
+
+## Separate Reputation Signal
+
+The optional OpenPhish Community Feed is not a heuristic indicator and is not
+added to the 0–100 static score. PhishGuard compares the normalized full URL
+against the locally cached feed. An exact match in a fresh feed raises the
+displayed threat classification to CRITICAL and is stored separately as a
+reputation status.
+
+`not_listed` means only that the exact URL was absent from the current feed.
+If the feed is stale or unavailable, the status is `unknown` or `unavailable`;
+neither is a safe verdict. Exact-URL matching avoids flagging every URL on a
+shared hosting domain because another URL on that host appeared in the feed.
+
+The included benchmark measures only the small hand-authored static test set;
+it does not measure feed coverage or real-world detection quality.

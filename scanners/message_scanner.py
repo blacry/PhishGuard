@@ -20,8 +20,7 @@ Python concepts used:
 
 
 import re
-import os
-import csv
+from utils.keywords import load_category_keywords
 
 
 # Default fallback keywords if data/keywords.csv is unavailable
@@ -52,25 +51,7 @@ def _load_category_keywords(category_name, default_list):
     Helper function to load keywords for a specific category from data/keywords.csv.
     Falls back to default_list if the file cannot be accessed.
     """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    keywords_path = os.path.join(current_dir, "..", "data", "keywords.csv")
-
-    keywords = []
-    if os.path.exists(keywords_path):
-        try:
-            with open(keywords_path, mode="r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row.get("category", "").strip() == category_name:
-                        word = row.get("keyword", "").strip().lower()
-                        if word:
-                            keywords.append(word)
-        except Exception:
-            keywords = default_list
-    else:
-        keywords = default_list
-
-    return keywords if keywords else default_list
+    return load_category_keywords(category_name, default_list)
 
 
 def extract_urls(message):

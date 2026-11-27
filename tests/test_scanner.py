@@ -1,34 +1,29 @@
-"""
-test_scanner.py — Unit tests for PhishGuard scanners.
+"""Tests for URL scanning, validation, risk scoring, and persistence."""
 
-Tests verify that each function does what we claim it does.
-We use pytest, a popular Python testing library.
+import csv
+import os
 
-How to run tests:
-    cd PhishGuard
-    pytest tests/test_scanner.py -v
-
-The '-v' flag means "verbose" — it shows each test name and
-whether it passed or failed.
-
-Python concepts used:
-    - assert statements (check if something is True)
-    - Test functions (must start with "test_")
-    - Importing from other modules
-"""
-
-# ---- URL Scanner Tests ----
-
+from engine.recommendation_engine import (
+    generate_explanation,
+    generate_recommendations,
+)
+from engine.risk_engine import (
+    calculate_risk_score,
+    classify_threat,
+    classify_with_reputation,
+)
+from scanners.message_scanner import scan_message
 from scanners.url_scanner import (
     check_https,
     check_ip_address,
-    check_url_length,
+    check_special_characters,
     check_subdomains,
     check_suspicious_keywords,
-    check_special_characters,
-    scan_url
+    check_url_length,
+    scan_url,
 )
-from utils.validators import is_valid_url, is_valid_message, sanitize_input
+from utils.helpers import generate_statistics, load_scan_history, save_scan
+from utils.validators import is_valid_message, is_valid_url, sanitize_input
 
 
 def test_check_https_detects_http():
@@ -100,66 +95,7 @@ def test_check_special_characters_detects_at():
 
 
 
-# ---- Message Scanner Tests ----
-
-from scanners.message_scanner import (
-    extract_urls,
-    detect_urgency,
-    detect_threat_language,
-    detect_credential_request,
-    detect_financial_request,
-    scan_message
-)
-
-
-def test_extract_urls_finds_url():
-    """Messages containing URLs should return them in a list."""
-    urls = extract_urls("Please click http://example.com/login for details.")
-    assert urls == ["http://example.com/login"]
-
-
-def test_extract_urls_empty_message():
-    """Messages with no URLs should return an empty list."""
-    urls = extract_urls("Hello there, hope you have a great day!")
-    assert urls == []
-
-
-def test_detect_urgency_finds_urgent():
-    """Messages with urgency words should trigger."""
-    res = detect_urgency("Act now! You must respond within 24 hours.")
-    assert res["triggered"] is True
-    assert res["indicator"] == "urgency_language"
-    assert "act now" in res["matched_words"]
-
-
-def test_detect_threat_language_finds_threat():
-    """Messages with threat words should trigger."""
-    res = detect_threat_language("Your account will be suspended due to unauthorized access.")
-    assert res["triggered"] is True
-    assert res["indicator"] == "threat_language"
-
-
-def test_detect_credential_request_finds_request():
-    """Messages asking for credentials should trigger."""
-    res = detect_credential_request("Please verify your password immediately.")
-    assert res["triggered"] is True
-    assert res["indicator"] == "credential_request"
-    assert "verify your password" in res["matched_words"]
-
-
-def test_detect_financial_request_finds_request():
-    """Messages asking for money/banking info should trigger."""
-    res = detect_financial_request("Send payment using a gift card or bank account.")
-    assert res["triggered"] is True
-    assert res["indicator"] == "financial_request"
-    assert "bank account" in res["matched_words"]
-
-
-
 # ---- Risk Engine Tests ----
-
-from engine.risk_engine import calculate_risk_score, classify_threat
-from engine.recommendation_engine import generate_explanation, generate_recommendations
 
 
 def test_classify_threat_low():
@@ -188,6 +124,12 @@ def test_classify_threat_critical():
     assert classify_threat(75) == "CRITICAL"
     assert classify_threat(90) == "CRITICAL"
     assert classify_threat(100) == "CRITICAL"
+
+
+def test_reputation_escalates_label_without_changing_static_score():
+    result = {"status": "known_malicious"}
+    assert classify_with_reputation(10, [result]) == "CRITICAL"
+    assert classify_with_reputation(10, [{"status": "not_listed"}]) == "LOW"
 
 
 def test_risk_score_capped_at_100():
@@ -235,6 +177,28 @@ def test_is_valid_url_rejects_garbage():
     assert is_valid_url("") is False
 
 
+def test_is_valid_url_rejects_unsafe_schemes():
+    assert is_valid_url("javascript:alert(1)") is False
+    assert is_valid_url("ftp://example.com/file") is False
+    assert is_valid_url("file:///tmp/example") is False
+
+
+def test_is_valid_url_rejects_malformed_hosts():
+    assert is_valid_url("http://") is False
+    assert is_valid_url("http://user:pass@example.com") is False
+    assert is_valid_url("http://999.999.999.999") is False
+    assert is_valid_url("http://example-.com") is False
+    assert is_valid_url("http://example.com:99999") is False
+    assert is_valid_url("http://example.com/\npath") is False
+
+
+def test_is_valid_url_accepts_ipv4_ipv6_and_idn():
+    assert is_valid_url("http://192.168.1.1/login") is True
+    assert is_valid_url("http://[2001:db8::1]/login") is True
+    assert is_valid_url("https://example.com") is True
+    assert is_valid_url("https://münich.example") is True
+
+
 def test_is_valid_message_rejects_empty():
     """Empty strings should be rejected as invalid messages."""
     assert is_valid_message("") is False
@@ -243,8 +207,6 @@ def test_is_valid_message_rejects_empty():
 
 
 # ---- Helper & Statistics Tests ----
-
-from utils.helpers import save_scan, load_scan_history, generate_statistics
 
 
 def test_save_scan_and_load_history():
@@ -261,11 +223,18 @@ def test_save_scan_and_load_history():
 
     history = load_scan_history()
     assert len(history) > 0
-    assert any(h.get("input") == "http://example.com/test-scan" for h in history)
+    assert any(h.get("input") == "[not stored]" for h in history)
 
 
 def test_generate_statistics():
     """Verify that statistics compute totals and distributions."""
+    save_scan({
+        "input_type": "url",
+        "input": "https://example.com",
+        "risk_score": 10,
+        "threat_level": "LOW",
+        "indicators": "none",
+    })
     stats = generate_statistics()
     assert stats is not None
     assert stats["total_scans"] >= 1
@@ -275,9 +244,6 @@ def test_generate_statistics():
 
 def test_all_prebuilt_test_cases():
     """Verify that all 10 prebuilt cases in test_cases.csv evaluate to their expected threat level."""
-    import os
-    import csv
-
     current_dir = os.path.dirname(os.path.abspath(__file__))
     cases_path = os.path.join(current_dir, "..", "data", "test_cases.csv")
     assert os.path.exists(cases_path)

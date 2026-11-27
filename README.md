@@ -1,7 +1,7 @@
 # 🛡️ PhishGuard — Phishing Detection CLI Tool
 
 > A Python command-line application that detects phishing indicators in URLs
-> and text messages using rule-based static analysis.
+> and text messages using explainable rules and an optional local feed check.
 
 **Course:** Computational Thinking and Programming (2026CSAE100)  
 **Version:** 1.0 (Rule-based, no ML)  
@@ -23,10 +23,12 @@ For each scan, it:
 3. **Classifies** the threat as LOW / MEDIUM / HIGH / CRITICAL
 4. **Explains** which indicators fired and why they're suspicious
 5. **Recommends** what the user should do
-6. **Saves** every scan to a CSV history for later review
+6. **Saves** metadata to local SQLite history (input is redacted by default)
+7. Optionally checks URLs against a locally cached phishing feed
 
-⚠️ **Important:** PhishGuard uses static analysis only. It NEVER opens,
-visits, or makes requests to submitted URLs.
+⚠️ **Important:** PhishGuard never opens or visits submitted URLs. The
+optional feed mode downloads threat data and compares it locally; it does not
+send submitted URLs to the feed provider.
 
 ---
 
@@ -42,8 +44,11 @@ python -m venv venv
 venv\Scripts\activate        # Windows
 # source venv/bin/activate   # macOS/Linux
 
-# 3. Install dependencies
+# 3. Install runtime dependencies
 pip install -r requirements.txt
+
+# Install test tools when developing
+pip install -r requirements-dev.txt
 ```
 
 ---
@@ -53,6 +58,11 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+At a prompt, **Ctrl+C** cancels the current action without a traceback. At the
+main menu, Ctrl+C or end-of-input exits cleanly. End-of-input is Ctrl+Z then
+Enter in Windows terminals and Ctrl+D on macOS/Linux. An interrupted delete
+confirmation never deletes scan history.
 
 You'll see a menu:
 ```
@@ -67,10 +77,85 @@ What would you like to do?
   2. Scan a message
   3. View scan history
   4. View statistics
-  5. Exit
+  5. Delete scan history
+  6. Exit
 ------------------------------
-Enter your choice (1-5):
+Enter your choice (1-6):
 ```
+
+### Local history and privacy
+
+Scan metadata is stored in `data/scan_history.sqlite3`. Submitted message/URL
+content is **not stored by default**. To retain content encrypted, install the
+requirements and configure a Fernet key in `PHISHGUARD_ENCRYPTION_KEY`:
+
+```powershell
+$env:PHISHGUARD_ENCRYPTION_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Keep that key in a secure location; losing it means encrypted content cannot
+be recovered. Set `PHISHGUARD_RETENTION_DAYS` to a positive integer to change
+the default 90-day history retention. The menu's **Delete scan history** action
+removes scan records but retains a content-free audit event.
+
+History is written only to SQLite; CSV history import and export are not
+supported. Existing SQLite databases are upgraded in place while retaining
+their scan records. The old CSV was removed from the current tree, but earlier
+Git commits or backups may still contain copies.
+
+### Optional phishing reputation feed
+
+The static checks do not send submitted URLs anywhere. To opt in to an
+OpenPhish Community Feed download, set `PHISHGUARD_ENABLE_OPENPHISH=1` before
+running PhishGuard:
+
+```powershell
+$env:PHISHGUARD_ENABLE_OPENPHISH = "1"
+python main.py
+```
+
+PhishGuard downloads the public feed from
+[OpenPhish](https://openphish.com/phishing_feeds.html) and compares exact
+normalized URLs locally; it never submits the URL being scanned. OpenPhish
+documents a 12-hour community-feed update cadence and its
+[Terms of Use](https://openphish.com/terms.html); review those terms before
+enabling it. Enabling feed updates makes outbound requests to OpenPhish/GitHub,
+which can expose your network address, but the scanned URL is not included.
+Feed refreshes are cached for 12 hours, rate-limited, and use a 10-second
+timeout. If no fresh feed is available, the result is reported as
+unknown/unavailable—not safe. An exact match in a fresh feed changes the
+threat label to CRITICAL but does not change the separate heuristic score.
+An entry found only in stale feed data is reported as unknown.
+
+Run the local labeled-case benchmark (static heuristics only) with:
+
+```powershell
+python -m utils.benchmark
+```
+
+The current 10-case dataset is hand-authored regression coverage, not a
+representative estimate of real-world precision or recall.
+
+## Container Deployment
+
+Docker Compose builds a non-root CLI container. No network ports are exposed;
+run it interactively and keep scan data in persistent Docker volumes:
+
+```bash
+docker compose build
+docker compose run --rm phishguard
+```
+
+The SQLite database and reputation cache persist in the `phishguard-data`
+volume; exported charts persist in `phishguard-visualizations`. OpenPhish
+checks remain disabled by default. To opt in, set
+`PHISHGUARD_ENABLE_OPENPHISH=1` in the environment before running Compose.
+The encryption key can be passed through `PHISHGUARD_ENCRYPTION_KEY`; keep it
+outside the image and Compose file.
+
+The Docker build excludes local SQLite databases, feed caches, and other
+runtime state so personal history is not copied into a distributable image.
+Scan history is managed only through SQLite.
 
 ---
 
@@ -82,7 +167,8 @@ PhishGuard/
 ├── scanners/
 │   ├── __init__.py
 │   ├── url_scanner.py               # URL phishing checks (6 indicators)
-│   └── message_scanner.py           # Message language checks (4 indicators)
+│   ├── message_scanner.py           # Message language checks (4 indicators)
+│   └── reputation.py                # Optional cached OpenPhish exact-URL checks
 ├── engine/
 │   ├── __init__.py
 │   ├── risk_engine.py               # Scoring + threat classification
@@ -90,18 +176,33 @@ PhishGuard/
 ├── utils/
 │   ├── __init__.py
 │   ├── validators.py                # Input validation (is it a URL?)
-│   └── helpers.py                   # CSV save/load, statistics
+│   ├── helpers.py                   # SQLite storage, retention, statistics
+│   ├── charts.py                    # Matplotlib chart exports
+│   ├── keywords.py                  # Keyword CSV validation and loading
+│   └── benchmark.py                 # Local labeled-case evaluation
 ├── data/
 │   ├── keywords.csv                 # Phishing keyword database
 │   ├── test_cases.csv               # Pre-built test inputs
-│   └── scan_history.csv             # Saved scan results (append-only)
+│   └── scan_history.sqlite3         # Local history database (created at runtime)
 ├── tests/
-│   └── test_scanner.py              # pytest unit tests
+│   ├── test_scanner.py              # URL, validation, risk, and history tests
+│   ├── test_message_scanner.py      # Message scanner unit tests
+│   ├── test_cli.py                  # CLI input and cancellation behavior
+│   ├── test_visualization.py        # Chart export regression
+│   ├── test_storage.py              # Storage privacy and retention tests
+│   ├── test_keywords.py             # Keyword-data validation tests
+│   ├── test_reputation.py           # Offline reputation-feed tests
+│   └── test_benchmark.py            # Benchmark regression tests
 ├── docs/                            # Full project documentation
 ├── reports/                         # Generated reports
 ├── visualizations/                  # Generated charts
 ├── screenshots/                     # App screenshots
 ├── requirements.txt                 # Python dependencies
+├── requirements-dev.txt             # Test-only dependencies
+├── Dockerfile                       # Non-root runtime image
+├── compose.yaml                     # Interactive service and persistent volumes
+├── .dockerignore                    # Excludes local state and development files
+├── .github/workflows/ci.yml         # Test, benchmark, and image-build checks
 ├── .gitignore                       # Git ignore rules
 ├── LICENSE                          # MIT License
 └── README.md                        # This file
@@ -112,23 +213,36 @@ PhishGuard/
 ## 🧪 Running Tests
 
 ```bash
-pytest tests/test_scanner.py -v
+python -m pip install -r requirements-dev.txt
+python -m pytest -v
 ```
+
+GitHub Actions runs the tests and benchmark on pushes, pull requests, or a
+manual request, then builds the Docker image separately. It does not publish
+an image to a registry.
+
+The workflow instructions are stored in `.github/workflows/ci.yml`. YAML
+(`.yml`) is a readable format for configuration, like a checklist of steps
+for GitHub—not a programming language used by PhishGuard. You do not need to
+learn or edit YAML to use the app.
 
 ---
 
 ## ⚠️ Limitations
 
-- **Static analysis only** — cannot detect phishing pages that look
-  identical to real sites (visual similarity).
+- **Heuristic analysis** — cannot detect phishing pages that look
+  identical to real sites (visual similarity). The optional feed is a
+  separate signal, not a guarantee or a substitute for browsing protection.
 - **Rule-based** — relies on heuristic weights, not machine learning.
   May produce false positives (safe things flagged) and false negatives
   (phishing things missed).
 - **HTTPS misconception** — a site having HTTPS does NOT mean it's safe.
   Phishers use HTTPS too. Our HTTPS check has a low weight for this reason.
 - **English only** — keyword detection works only for English text.
-- **No real-time checks** — doesn't verify if a domain is on a blacklist
-  or check DNS records.
+- **Feed coverage is limited** — the optional feed is cached and matches
+  exact URLs only; absence from the feed is not evidence that a URL is safe.
+- **Small benchmark** — its 10 hand-authored cases are for regression
+  checks, not evidence of real-world accuracy.
 
 See [docs/08_LIMITATIONS_AND_FUTURE.md](docs/08_LIMITATIONS_AND_FUTURE.md) for details.
 

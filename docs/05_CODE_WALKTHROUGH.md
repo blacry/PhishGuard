@@ -14,13 +14,13 @@ reads the user's choice, and calls the right function.
 | Function | Purpose | Inputs | Outputs | Python Concepts |
 |----------|---------|--------|---------|-----------------|
 | `display_banner()` | Print the welcome header | None | Prints to screen | `print()`, string multiplication (`"=" * 55`) |
-| `display_menu()` | Print the 5 menu options | None | Prints to screen | `print()` |
-| `get_user_choice()` | Read and validate the user's menu choice | None (reads from keyboard) | `int` (1-5) or `-1` on error | `input()`, `int()`, `try/except ValueError`, `strip()` |
-| `handle_url_scan()` | Placeholder for URL scanning | None | Prints stub message | Placeholder, will be connected in Task 3 |
-| `handle_message_scan()` | Placeholder for message scanning | None | Prints stub message | Placeholder |
-| `handle_view_history()` | Placeholder for viewing history | None | Prints stub message | Placeholder |
-| `handle_statistics()` | Placeholder for statistics | None | Prints stub message | Placeholder |
-| `main()` | The menu loop — runs until the user exits | None | None | `while True`, `if/elif/else`, `break`, function calls |
+| `display_menu()` | Print the 6 menu options | None | Prints to screen | `print()` |
+| `_read_prompt(prompt)` | Read input; treat EOF/Ctrl+C as cancellation | Prompt text | `str` or `None` | `input()`, `try/except` |
+| `get_user_choice()` | Read and validate the user's menu choice | None (reads from keyboard) | `int` (1-6), `-1` on invalid input, or `None` on interruption | input helper, `int()`, `strip()` |
+| `handle_url_scan()` | Run static checks plus optional reputation lookup | None | Prints report and stores metadata | scanner calls, risk engine |
+| `handle_message_scan()` | Scan text and embedded URLs | None | Prints report and stores metadata | scanner calls, loops |
+| `handle_delete_history()` | Confirm and delete stored scan rows | None | Prints deletion result | input validation, SQLite |
+| `main()` | The menu loop — runs until the user exits or input ends | None | None | `while True`, `if/elif/else`, `break`, function calls |
 
 **Key pattern:** `if __name__ == "__main__": main()`
 - This line checks: "Am I being run directly, or imported?"
@@ -70,6 +70,7 @@ Never opens the URL — only looks at the text.
 |----------|---------|--------|---------|-----------------|
 | `calculate_risk_score(indicator_results)` | Sum weights of triggered indicators, cap at 100 | `list[dict]` | `int` (0-100) | `for` loop, dictionary lookup, `min()`, accumulator pattern |
 | `classify_threat(risk_score)` | Map score to LOW/MEDIUM/HIGH/CRITICAL | `int` | `str` | `if/elif/else`, comparison operators |
+| `classify_with_reputation(risk_score, results)` | Keep heuristic score separate; elevate a fresh exact feed match | `int`, `list[dict]` | `str` | separate signal handling |
 
 **Key data:** `INDICATOR_WEIGHTS` — a dictionary mapping indicator names
 to their numeric weights. Defined at module level (not inside a function).
@@ -99,14 +100,55 @@ to their numeric weights. Defined at module level (not inside a function).
 
 ---
 
+## scanners/reputation.py — Optional Phishing Feed
+
+**Purpose:** Download and cache the OpenPhish Community Feed when explicitly
+enabled, then compare normalized full URLs locally. The submitted URL is never
+sent to the provider.
+
+| Function | Purpose | Important behavior |
+|----------|---------|--------------------|
+| `parse_openphish_feed(contents)` | Validate/normalize feed entries | Accepts HTTP(S) URLs only |
+| `lookup_url_reputation(url)` | Return disabled, listed, not-listed, stale, or unavailable status | 12-hour cache, 1-hour retry limit, 10-second network timeout |
+| `summarize_reputation_results(results)` | Reduce results for scan history | Kept separate from static indicator scoring |
+
+---
+
 ## utils/helpers.py — File I/O and Statistics
 
-**Purpose:** Save scans to CSV and compute summary statistics.
+**Purpose:** Save scan metadata to SQLite and compute summary statistics.
 
 | Function | Purpose | Inputs | Outputs | Python Concepts |
 |----------|---------|--------|---------|-----------------|
-| `save_scan(scan_result)` | Append one row to scan_history.csv | `dict` | `bool` | `open()`, `csv` module, file append mode ("a"), `try/except` |
-| `generate_statistics()` | Read history and compute stats | None | `dict` or `None` | `csv.reader()`, `for` loop, `len()`, averages, counting |
+| `save_scan(scan_result)` | Store scan metadata; encrypt input only when configured | `dict` | `bool` | `sqlite3`, Fernet encryption, retention |
+| `delete_scan_history()` | Delete scan records and retain an audit event | None | `int` or `None` | SQLite transactions |
+| `generate_statistics()` | Read history and compute stats | None | `dict` or `None` | `for` loop, `len()`, averages, counting |
+
+---
+
+## utils/charts.py — Chart Exports
+
+**Purpose:** Render threat distribution and scan input-type charts from
+SQLite history. It uses standard-library counters and matplotlib; pandas is
+not required.
+
+---
+
+## Keyword Validation and Benchmark
+
+- `utils/keywords.py` checks the CSV header, allowed categories, duplicate
+  category/keyword pairs, non-empty descriptions, and positive weights before
+  scanner code uses the data.
+- `utils/benchmark.py` evaluates `data/test_cases.csv` and reports exact
+  classification accuracy, binary alert precision/recall, false positives,
+  false negatives, and a confusion matrix. Run it with
+  `python -m utils.benchmark`. This small hand-authored regression set does
+  not estimate real-world performance.
+- `Dockerfile` and `compose.yaml` provide an interactive, non-root deployment
+  with persistent data and chart volumes. The image excludes local scan
+  databases and feed caches.
+- `.github/workflows/ci.yml` runs tests and the local benchmark, then builds
+  the container image for pushes and pull requests.
 
 ---
 
@@ -132,9 +174,9 @@ Every concept used in this project, for your viva reference:
 | `min()` | risk_engine.py | Find the smaller of two values |
 | `f-strings` | recommendation_engine | Format strings with variables: `f"Score: {x}"` |
 | `re` module | url_scanner, message_scanner | Pattern matching with regex |
-| `csv` module | helpers.py | Read/write CSV files |
-| `open()` | helpers.py | Open a file for reading or writing |
+| `sqlite3` module | helpers.py | Store and query local scan history |
+| `cryptography.fernet` | helpers.py | Encrypt opt-in stored input |
+| `csv` module | keywords.py, benchmark.py | Validate keyword data and read labeled cases |
 | `import` | Everywhere | Use code from other modules |
 | `__name__ == "__main__"` | main.py | Check if file is run directly |
-| `pass` | Stubs | Placeholder — does nothing |
 | `docstrings` | Everywhere | Documentation inside `"""triple quotes"""` |

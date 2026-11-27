@@ -103,3 +103,14 @@ def classify_threat(risk_score):
     else:
         return "CRITICAL"
 
+
+def classify_with_reputation(risk_score, reputation_results):
+    """Keep the heuristic score unchanged while honoring a feed-listed host."""
+    if any(
+        result.get("status") == "known_malicious"
+        for result in reputation_results
+        if isinstance(result, dict)
+    ):
+        return "CRITICAL"
+    return classify_threat(risk_score)
+
