@@ -118,9 +118,9 @@ indicators. It downloads feed data only and performs exact URL matching locally.
 | `data/test_cases.csv` | Pre-built inputs with expected results for testing |
 | `data/openphish_cache.json` | Ignored local cache of public phishing-feed data |
 | `data/scan_history.sqlite3` | Local scan history and content-free audit events |
-| `tests/test_scanner.py` | URL, validation, risk, and history tests |
+| `tests/test_scanner.py` | URL scanning, validation, and risk tests |
 | `tests/test_message_scanner.py` | Message-language and URL-extraction tests |
-| `tests/test_storage.py` | SQLite privacy, retention, and schema-migration tests |
+| `tests/test_storage.py` | SQLite history, privacy, statistics, retention, and migration tests |
 | `tests/test_reputation.py` | Offline tests with mocked feed responses |
 | `tests/test_keywords.py` | Keyword CSV validation tests |
 | `tests/test_benchmark.py` | Labeled-case evaluation tests |

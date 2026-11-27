@@ -1,7 +1,4 @@
-"""Tests for URL scanning, validation, risk scoring, and persistence."""
-
-import csv
-import os
+"""Tests for URL scanning, validation, and risk scoring."""
 
 from engine.recommendation_engine import (
     generate_explanation,
@@ -12,7 +9,6 @@ from engine.risk_engine import (
     classify_threat,
     classify_with_reputation,
 )
-from scanners.message_scanner import scan_message
 from scanners.url_scanner import (
     check_https,
     check_ip_address,
@@ -20,10 +16,8 @@ from scanners.url_scanner import (
     check_subdomains,
     check_suspicious_keywords,
     check_url_length,
-    scan_url,
 )
-from utils.helpers import generate_statistics, load_scan_history, save_scan
-from utils.validators import is_valid_message, is_valid_url, sanitize_input
+from utils.validators import is_valid_message, is_valid_url
 
 
 def test_check_https_detects_http():
@@ -77,6 +71,13 @@ def test_check_subdomains_passes_normal():
     """URLs with 0-2 subdomains should NOT trigger."""
     res = check_subdomains("https://www.example.com")
     assert res["triggered"] is False
+
+
+def test_check_subdomains_handles_malformed_ipv6_host():
+    res = check_subdomains("http://[malformed")
+
+    assert res["triggered"] is False
+    assert "could not be parsed" in res["detail"]
 
 
 def test_check_suspicious_keywords_detects():
@@ -204,68 +205,6 @@ def test_is_valid_message_rejects_empty():
     assert is_valid_message("") is False
     assert is_valid_message("hi") is False
     assert is_valid_message("Urgent notice regarding your account security") is True
-
-
-# ---- Helper & Statistics Tests ----
-
-
-def test_save_scan_and_load_history():
-    """Verify that scan saving appends records correctly."""
-    scan = {
-        "input_type": "url",
-        "input": "http://example.com/test-scan",
-        "risk_score": 10,
-        "threat_level": "LOW",
-        "indicators": "https_check"
-    }
-    success = save_scan(scan)
-    assert success is True
-
-    history = load_scan_history()
-    assert len(history) > 0
-    assert any(h.get("input") == "[not stored]" for h in history)
-
-
-def test_generate_statistics():
-    """Verify that statistics compute totals and distributions."""
-    save_scan({
-        "input_type": "url",
-        "input": "https://example.com",
-        "risk_score": 10,
-        "threat_level": "LOW",
-        "indicators": "none",
-    })
-    stats = generate_statistics()
-    assert stats is not None
-    assert stats["total_scans"] >= 1
-    assert "threat_distribution" in stats
-    assert "LOW" in stats["threat_distribution"]
-
-
-def test_all_prebuilt_test_cases():
-    """Verify that all 10 prebuilt cases in test_cases.csv evaluate to their expected threat level."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    cases_path = os.path.join(current_dir, "..", "data", "test_cases.csv")
-    assert os.path.exists(cases_path)
-
-    with open(cases_path, mode="r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            itype = row["input_type"]
-            inp = row["input"]
-            expected = row["expected_threat_level"]
-
-            if itype == "url":
-                res = scan_url(inp)
-            else:
-                mres = scan_message(inp)
-                res = list(mres["message_indicators"])
-                for u in mres["extracted_urls"]:
-                    res.extend(scan_url(u))
-
-            score = calculate_risk_score(res)
-            actual = classify_threat(score)
-            assert actual == expected, f"Failed on '{inp}': expected {expected}, got {actual}"
 
 
 

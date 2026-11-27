@@ -3,6 +3,7 @@
 import csv
 import logging
 import os
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 KEYWORD_CATEGORIES = {
@@ -81,6 +82,11 @@ def _read_keyword_file(path):
     return rows, issues
 
 
+@lru_cache(maxsize=32)
+def _read_keyword_file_cached(path, modified_ns, size):
+    return _read_keyword_file(path)
+
+
 def validate_keyword_file(path=None):
     """Return all schema and row issues found in a keyword CSV."""
     keyword_path = path or _default_keyword_path()
@@ -95,7 +101,10 @@ def load_category_keywords(category, default_list, path=None):
     """Load one validated category, warning and using defaults only if absent."""
     keyword_path = path or _default_keyword_path()
     try:
-        rows, issues = _read_keyword_file(keyword_path)
+        file_stat = os.stat(keyword_path)
+        rows, issues = _read_keyword_file_cached(
+            keyword_path, file_stat.st_mtime_ns, file_stat.st_size
+        )
     except FileNotFoundError:
         logger.warning("Keyword file missing at %s; using built-in defaults", keyword_path)
         return list(default_list)

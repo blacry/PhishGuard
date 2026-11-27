@@ -49,8 +49,8 @@ Even tech-savvy people can be fooled by convincing messages.
 ### 🔮 Stretch Goals (if time permits)
 - PDF report export
 - Batch scanning from a file
-- Obtain an independently labeled evaluation corpus and measure
-  false-positive/false-negative rates with it
+- Evaluate more recent independent datasets and preserve a separate,
+  untouched holdout for future rule changes
 
 ### ❌ Out of Scope
 - Machine learning or AI-based detection

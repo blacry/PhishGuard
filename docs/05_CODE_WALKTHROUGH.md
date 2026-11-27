@@ -143,7 +143,14 @@ not required.
   classification accuracy, alert precision/recall/F1, false positives,
   false negatives, a confusion matrix, and separate URL/message metrics.
   Run `python -m utils.benchmark`; pass `--dataset PATH` to evaluate another
-  CSV. The benchmark does not verify dataset provenance or label quality.
+  CSV. It supports the built-in PhishGuard schema, UCI PhiUSIIL's binary
+  `URL`/`label` columns, and the prepared Kaggle PhishGuard format with its
+  explicit source-label descriptions. For external binary URL labels it also
+  reports an evaluation-only score-threshold comparison using a deterministic
+  hostname-grouped split,
+  plus precision sensitivity scenarios at illustrative class prevalences.
+  The benchmark does not verify dataset provenance or label quality, and
+  does not apply the candidate threshold to the app.
 - `Dockerfile` and `compose.yaml` provide an interactive, non-root deployment
   with persistent data and chart volumes. The image excludes local scan
   databases and feed caches.

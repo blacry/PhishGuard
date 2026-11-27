@@ -29,6 +29,31 @@ def test_input_is_not_stored_without_encryption_key(monkeypatch):
     assert ciphertext is None
 
 
+def test_statistics_summarize_saved_scan():
+    assert helpers.save_scan({
+        "input_type": "url",
+        "input": "https://example.com",
+        "risk_score": 10,
+        "threat_level": "LOW",
+        "indicators": "none",
+    }) is True
+
+    stats = helpers.generate_statistics()
+
+    assert stats == {
+        "total_scans": 1,
+        "url_scans": 1,
+        "message_scans": 0,
+        "average_risk_score": 10.0,
+        "threat_distribution": {
+            "LOW": 1,
+            "MEDIUM": 0,
+            "HIGH": 0,
+            "CRITICAL": 0,
+        },
+    }
+
+
 def test_input_is_encrypted_and_decryptable_with_configured_key(monkeypatch):
     key = Fernet.generate_key()
     monkeypatch.setenv("PHISHGUARD_ENCRYPTION_KEY", key.decode("ascii"))

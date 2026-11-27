@@ -19,9 +19,11 @@ If you encounter a word you don't understand, look it up here.
 | **Dictionary (dict)** | A Python data structure that stores key-value pairs. Like a real dictionary: the word is the key, the definition is the value. `{"name": "PhishGuard", "version": 1}` |
 | **DNS** | Domain Name System — translates domain names (google.com) to IP addresses (142.250.x.x). Like a phone book for the internet. |
 | **Docstring** | A special string in triple quotes at the start of a function/module that documents what it does. Python's built-in documentation system. |
+| **Development set** | The part of labeled data used to compare or choose a setting, such as a score threshold. |
 | **Domain name** | The human-readable address of a website, like `google.com` or `example.com`. |
 | **False negative** | When phishing is NOT detected (missed). The tool says "safe" but it's actually phishing. |
 | **False positive** | When something safe IS flagged as phishing. The tool says "danger" but it's actually fine. |
+| **False-positive rate** | The share of legitimate examples that the detector incorrectly flags. |
 | **Precision** | Of the items the detector flags, the share labeled positive in the evaluation set. |
 | **Recall** | Of the positive items in the evaluation set, the share the detector flags. |
 | **F1 score** | A combined measure of precision and recall. It is low when either measure is low, and is zero when both are zero. |
@@ -29,6 +31,7 @@ If you encounter a word you don't understand, look it up here.
 | **Function** | A reusable block of code that takes inputs (parameters), does something, and returns an output. Defined with `def`. |
 | **GUI** | Graphical User Interface — a visual interface with buttons, windows, etc. PhishGuard uses CLI, not GUI. |
 | **Heuristic** | A practical rule-of-thumb that works well most of the time but isn't guaranteed. Our weights are heuristics. |
+| **Holdout set** | Labeled data kept separate from threshold selection or rule tuning, then used to measure the chosen approach. |
 | **HTTPS** | HyperText Transfer Protocol Secure — encrypts the connection between your browser and the website. The "S" means Secure. |
 | **HTTP** | HyperText Transfer Protocol — the insecure version. Data is sent as plain text that anyone on the network can read. |
 | **Indicator** | A specific red flag that suggests phishing. Each indicator is checked by one function. Example: "IP address in URL." |
@@ -52,6 +55,7 @@ If you encounter a word you don't understand, look it up here.
 | **String** | A sequence of characters in Python, like `"hello"` or `"http://example.com"`. |
 | **String method** | A built-in function you can call on a string: `.lower()`, `.strip()`, `.split()`, `.startswith()`. |
 | **Subdomain** | A prefix added before the main domain. In `mail.google.com`, `mail` is a subdomain. |
+| **Score threshold** | The minimum risk score treated as an alert in a binary evaluation. The current CLI threat-level cutoff remains unchanged. |
 | **Threat level** | A human-readable label: LOW, MEDIUM, HIGH, or CRITICAL. Usually derived from the heuristic score; a fresh exact public-feed match can separately elevate it to CRITICAL. |
 | **try/except** | Python's error handling. Code in `try` runs normally. If it crashes, `except` catches the error instead of stopping the program. |
 | **URL** | Uniform Resource Locator — a web address like `https://www.example.com/page`. Has parts: protocol, domain, path. |

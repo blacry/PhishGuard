@@ -133,22 +133,77 @@ Run the local labeled-case benchmark (static heuristics only) with:
 python -m utils.benchmark
 ```
 
-This uses the 10-case hand-authored regression dataset. To evaluate another
-labeled CSV, use:
+This uses the 10-case hand-authored regression dataset. The evaluator also
+accepts a labeled CSV using the PhishGuard schema or a UCI PhiUSIIL file with
+`URL` and `label` columns. It also recognizes the prepared Kaggle PhishGuard
+CSV when its `description` values are `Kaggle source label: benign` or
+`Kaggle source label: phishing`:
 
 ```powershell
 python -m utils.benchmark --dataset data\evaluation_cases.csv
 ```
 
-The CSV must have the header
-`input_type,input,expected_threat_level,description`; input type must be
-`url` or `message`, and labels must be `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
-The report includes exact-label accuracy, alert precision/recall/F1,
-false-positive and false-negative counts, a confusion matrix, and metrics
-separately for URLs and messages. The evaluator uses static rules only and
-never visits URLs. It does not verify dataset provenance or label quality:
-the default 10 cases are regression examples, not a representative estimate
-of real-world performance.
+The UCI CSV is not bundled in the repository. Download and extract it from the
+[UCI PhiUSIIL dataset page](https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset),
+then run:
+
+```powershell
+python -m utils.benchmark --dataset "C:\datasets\PhiUSIIL_Phishing_URL_Dataset.csv"
+```
+
+The PhishGuard CSV format has the header
+`input_type,input,expected_threat_level,description`; input types are `url`
+or `message`, and labels are `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`. For
+PhiUSIIL, label `0` means phishing and `1` means legitimate. The evaluator
+uses only its URL and label columns, with any non-LOW result counted as an
+alert. In the prepared Kaggle format, the explicit source-label description is
+used to map phishing and benign rows to the binary classes. URLs are never
+visited.
+
+On the full UCI snapshot (235,795 URLs), the current rules had 60.4% binary
+accuracy, 100% precision, 7.4% recall, 13.8% F1, zero false positives, and
+93,491 false negatives. This is a result for that specific historical dataset,
+not a claim about current real-world performance. The source was donated in 2024 and is licensed
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); dataset provenance
+and label quality are not verified by the benchmark tool.
+
+The evaluator also splits UCI URLs by hostname hash (80% development, 20%
+holdout) and chooses a score cutoff by development-set F1. The current cutoff
+of 25 had 13.3% holdout F1 and 0% false-positive rate. A development-selected
+cutoff of 5 had 77.3% holdout F1, 64.3% recall, 97.0% precision, and a 1.5%
+false-positive rate (396 false positives, 6,995 false negatives). This is
+analysis only; the app's cutoff remains unchanged. The UCI dataset's phishing
+prevalence is much higher than typical user traffic, so its precision does
+not transfer directly to production.
+For transparency, the benchmark also prints projected precision for the
+development-selected cutoff at illustrative phishing prevalences of 0.1%,
+1%, 5%, and 10%, using holdout recall and false-positive-rate point estimates.
+At 1% assumed prevalence the projection is about 30%, not the measured 97%.
+These scenarios are not real-traffic measurements or production forecasts.
+
+### Kaggle Malicious URLs corpus
+
+On the prepared 522,160-row Kaggle sample (428,074 benign and 94,086
+phishing), the current cutoff of 25 produced 65.3% accuracy, 10.5% precision,
+12.2% recall, 11.3% F1, and a 23.0% false-positive rate (98,370 false
+positives; 82,597 false negatives). The data source is Kaggle's [Malicious
+URLs dataset](https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset),
+listed as CC0. The prepared sample contains only unique, unambiguous benign
+and phishing URLs; six conflicting-label URLs were excluded, as were malware
+and defacement rows. These results depend on the prepared labels and this
+sample's high phishing share, and do not establish performance on live user
+traffic.
+
+A deterministic hostname-grouped 80/20 split contained 418,901 development
+and 103,259 holdout URLs. The development F1-maximizing cutoff was 0
+(30.6% F1, 100% FPR). On holdout it flagged every URL: 18.0% precision,
+100% recall, 30.5% F1,
+100% false-positive rate (84,701 false positives; 0 false negatives). At the
+unchanged cutoff 25, holdout precision was 10.8%, recall 12.2%, F1 11.5%, and
+false-positive rate 22.1% (18,739 false positives; 16,285 false negatives).
+The all-alert candidate is not useful for selective detection and is reported
+only as the result of the development-only F1 selection. Neither the candidate
+nor any other cutoff was applied to the scanner.
 
 ## Container Deployment
 
@@ -199,11 +254,11 @@ PhishGuard/
 │   ├── test_cases.csv               # Pre-built test inputs
 │   └── scan_history.sqlite3         # Local history database (created at runtime)
 ├── tests/
-│   ├── test_scanner.py              # URL, validation, risk, and history tests
+│   ├── test_scanner.py              # URL scanning, validation, and risk tests
 │   ├── test_message_scanner.py      # Message scanner unit tests
 │   ├── test_cli.py                  # CLI input and cancellation behavior
 │   ├── test_visualization.py        # Chart export regression
-│   ├── test_storage.py              # Storage privacy and retention tests
+│   ├── test_storage.py              # Storage privacy, retention, and statistics
 │   ├── test_keywords.py             # Keyword-data validation tests
 │   ├── test_reputation.py           # Offline reputation-feed tests
 │   └── test_benchmark.py            # Benchmark regression tests

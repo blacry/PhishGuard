@@ -148,7 +148,14 @@ def check_subdomains(url):
         3 or more subdomains is a frequent red flag for domain spoofing.
     """
     to_parse = url if "://" in url else "http://" + url
-    parsed = urlparse(to_parse)
+    try:
+        parsed = urlparse(to_parse)
+    except (ValueError, UnicodeError):
+        return {
+            "indicator": "excessive_subdomains",
+            "triggered": False,
+            "detail": "Host structure could not be parsed for subdomain analysis.",
+        }
     hostname = parsed.netloc.split(":")[0].strip()
 
     # Skip IP addresses since subdomains don't apply to raw IPs

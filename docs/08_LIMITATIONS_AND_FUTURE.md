@@ -66,10 +66,56 @@ requests to OpenPhish/GitHub, but does not transmit the URL being scanned.
 The included 10-case benchmark is hand-authored and closely aligned with the
 rules. Its measured 100% exact-label agreement is useful as a regression
 check only, not as a real-world false-positive or false-negative rate.
-The benchmark tool can evaluate a separate labeled CSV and report URL and
-message results separately, but it does not verify the dataset's provenance,
-license, representativeness, or labels. No independent evaluation corpus is
-currently included.
+The benchmark can also evaluate UCI's external PhiUSIIL URL dataset. On its
+235,795-row 2024 snapshot, PhishGuard's current rules achieved 60.4% binary
+accuracy, 100% precision, 7.4% recall, 13.8% F1, zero false positives, and
+93,491 false negatives. This shows a substantial recall gap on that dataset;
+it does not predict performance on current traffic. The dataset is not bundled
+in the repository, and the benchmark cannot verify arbitrary dataset
+provenance, representativeness, or labels. Rule tuning must use a development
+split and preserve an untouched holdout.
+
+A hostname-grouped 80/20 experiment selected a score cutoff of 5 by
+development-set F1. On the holdout, this candidate reached 77.3% F1 and 64.3%
+recall, with 97.0% precision and a 1.5% false-positive rate (396 false
+positives, 6,995 false negatives). The existing cutoff of 25 had 13.3% holdout
+F1 and no false positives. The candidate is not enabled. The UCI dataset has
+a much higher phishing prevalence than typical incoming user traffic, so the
+measured precision may substantially overstate real-world precision.
+
+The prepared Kaggle Malicious URLs sample contains 522,160 unique,
+unambiguous benign/phishing URLs (428,074 benign and 94,086 phishing), after
+excluding six conflicting-label URLs and all malware/defacement rows. At the
+current cutoff of 25, it produced 10.5% precision, 12.2% recall, 11.3% F1,
+23.0% false-positive rate, 98,370 false positives, and 82,597 false negatives.
+In the hostname-grouped 80/20 split, F1 selection on development chose cutoff
+0 (30.6% development F1, 100% development FPR); this alerts on every holdout
+URL and yielded 18.0% precision, 100% recall,
+30.5% F1, 100% false-positive rate, 84,701 false positives, and no false
+negatives. At cutoff 25, holdout results were 10.8% precision, 12.2% recall,
+11.5% F1, 22.1% false-positive rate, 18,739 false positives, and 16,285
+false negatives. The candidate result illustrates that F1 selection alone
+can favor an unusable all-alert threshold; it is not enabled.
+
+The corpus is Kaggle's [Malicious URLs
+dataset](https://www.kaggle.com/datasets/sid321axn/malicious-urls-dataset),
+listed as CC0. The prepared sample's source labels and sampling process were
+not independently audited. Its phishing prevalence is about 18%, so its
+precision does not estimate deployment traffic. The benchmark's prevalence
+projections are illustrative calculations from holdout recall/FPR, not
+production forecasts.
+
+The benchmark now reports illustrative precision projections at assumed
+phishing prevalences of 0.1%, 1%, 5%, and 10%. For example, the candidate's
+holdout recall/FPR point estimates project to about 30% precision at 1%
+prevalence. These scenarios expose the base-rate effect; they are not a
+replacement for evaluating labeled traffic from the intended deployment.
+Public sources checked so far do not establish that natural prevalence:
+[OpenPhish's free Community Feed](https://openphish.com/phishing_feeds.html)
+is a phishing-only feed, while [Tranco](https://tranco-list.eu/) is a ranking
+of popular domains, not a labeled sample of user-submitted URLs. A
+privacy-reviewed, benign-heavy sample with reliable labels and a known
+sampling method is still needed for deployment-relevant validation.
 
 ---
 
@@ -90,7 +136,7 @@ currently included.
 |---------|-----------|---------|
 | Add independently reviewed threat-intelligence providers | Medium | Broader, measured feed coverage |
 | Typosquatting detection (googIe.com vs google.com) | Medium | Catch lookalike domains |
-| Obtain and document an independently labeled evaluation corpus, then run it with `python -m utils.benchmark --dataset PATH` | Medium | Measure performance beyond the rule-aligned regression examples |
+| Evaluate newer independent corpora and preserve a separate holdout for rule tuning | Medium | Check whether recall improves without introducing unacceptable false positives |
 | GUI with Tkinter | Medium | More user-friendly |
 
 ### Long-term (Advanced / Out of Scope)

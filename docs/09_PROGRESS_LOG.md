@@ -300,11 +300,112 @@ This log tracks what was built, when, and why. Updated after every task.
 - Added per-input-type (URL/message) accuracy, alert precision/recall/F1,
   and clear output identifying the evaluated dataset.
 - Kept a visible limitation in the report and docs: the tool cannot verify
-  provenance, licensing, representativeness, or label quality, and no
-  independent corpus is included yet.
+  provenance, licensing, representativeness, or label quality. No external
+  dataset is bundled with the project.
 - Documented the exact CSV schema, invocation, metric meanings, and remaining
   need for a suitable independently labeled dataset.
 - Verified 54 tests passed, including external-CSV and no-positive-case metric
   handling; the default benchmark, compilation, and whitespace checks passed.
 
+---
+
+## 2026-11-27 — Test Organization Follow-up
+
+- Removed duplicate prebuilt-dataset coverage from `tests/test_scanner.py`;
+  `tests/test_benchmark.py` remains the single owner of labeled-case checks.
+- Removed persistence/statistics tests from the scanner suite. The storage
+  suite now owns history-statistics coverage alongside database behavior.
+- Verified 52 tests passed after the cleanup.
+
+---
+
+## 2026-11-27 — External Evaluation Follow-up
+
+- Evaluated all 235,795 URLs in UCI's PhiUSIIL Phishing URL dataset using only
+  its `URL` and `label` columns; no submitted URL was visited. UCI defines
+  label `0` as phishing and `1` as legitimate.
+- Results for this dataset: 60.4% binary accuracy, 100% precision, 7.4%
+  recall, 13.8% F1, 0 false positives, and 93,491 false negatives.
+- Added a deterministic SHA-256 hostname-grouped 80/20 development/holdout
+  threshold analysis. The current cutoff of 25 gave 13.3% holdout F1 with no
+  false positives. The development-best F1 cutoff of 5 gave 77.3% holdout F1,
+  64.3% recall, 97.0% precision, 1.5% false-positive rate, 396 false
+  positives, and 6,995 false negatives.
+- The candidate cutoff is reported for analysis only and has not been applied
+  to PhishGuard. Because the UCI dataset's phishing prevalence is much higher
+  than typical user traffic, its precision is not a production estimate.
+- Added illustrative precision sensitivity output for assumed phishing
+  prevalences of 0.1%, 1%, 5%, and 10%. At 1%, the candidate's holdout
+  recall/FPR point estimates project to about 30% precision. This is not a
+  real-traffic forecast; public phishing-only feeds and top-domain rankings
+  do not provide a labeled sample with natural user-traffic prevalence.
+- The source is licensed CC BY 4.0 and was donated in 2024. The 56 MB CSV was
+  kept outside the repository and removed after evaluation; rerunning requires
+  downloading it from the official
+  [UCI dataset page](https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset).
+- This historical result exposes a major recall gap but is not a current
+  real-world performance guarantee. Preserve a separate holdout before
+  changing rules based on this dataset.
+- Verified 57 tests passed, including binary-label, invalid-label, hostname
+  split, and development-only threshold-selection tests; full-data evaluation,
+  prevalence-scenario calculation, compilation, and whitespace checks passed.
+
+## 2026-11-27 — Prevalence and Readiness Follow-up
+
+- The user chose to keep the live alert cutoff unchanged and validate before
+  adoption. The experimental cutoff of 5 remains analysis-only.
+- Checked public validation-source options: OpenPhish's free community feed
+  provides phishing URLs but no benign comparison traffic; Tranco is a
+  popular-domain ranking, not a labeled sample of submitted URLs. Neither
+  establishes the natural phishing prevalence for this app.
+- Added holdout-based precision sensitivity projections for illustrative
+  phishing prevalences. They are explicitly labeled assumptions, not
+  production forecasts. A privacy-reviewed, representative benign-heavy
+  dataset is still needed for deployment-relevant validation.
+- Re-ran the full suite: 57 tests passed. Compilation, whitespace checks, and
+  the local regression benchmark passed.
+- GitHub currently reports no registered workflows or runs for this
+  repository. No Docker-compatible runtime is installed locally, so the
+  workflow and image build remain unverified; release readiness is pending.
+
+## 2026-11-27 — Kaggle Public-Corpus Evaluation
+
+- Evaluated the prepared Kaggle Malicious URLs CSV from the supplied temporary
+  path; no URLs were opened, fetched, DNS-resolved, or visited. The file had
+  522,160 cases: 428,074 benign and 94,086 phishing.
+- At the unchanged cutoff of 25, results were 65.3% accuracy, 10.5% precision,
+  12.2% recall, 11.3% F1, 23.0% false-positive rate, 98,370 false positives,
+  and 82,597 false negatives.
+- A deterministic hostname-grouped 80/20 split had 418,901 development and
+  103,259 holdout cases. Development-only F1 selection chose cutoff 0 (30.6%
+  development F1, 100% FPR). This all-alert candidate yielded 18.0% precision,
+  100% recall, 30.5% F1, 100% FPR, 84,701 false positives, and 0 false
+  negatives on holdout. At cutoff 25, holdout precision was 10.8%, recall
+  12.2%, F1 11.5%, FPR 22.1%, with 18,739 false positives and 16,285 false
+  negatives.
+- Identified malformed IPv6 host strings in the corpus that raised during
+  subdomain parsing. The check now reports that subdomain analysis is
+  unavailable for an unparseable host; other indicators, score weights, and
+  the live cutoff are unchanged.
+- Documented the Kaggle source (CC0), preparation exclusions, metrics, and
+  representativeness limitations. Updated the benchmark to map the prepared
+  CSV's explicit Kaggle source-label descriptions and run the grouped split.
+- Verified the focused tests (32 passed), full suite (60 passed), compilation,
+  and `git diff --check`; the dataset and source archive remain outside the
+  repository.
+
+## 2026-11-27 — Local CI and Container Readiness Check
+
+- Re-ran the current full suite: 60 tests passed. `compileall` over `engine`,
+  `scanners`, `tests`, `utils`, and `visualizations`, plus `git diff --check`,
+  also passed.
+- Checked the remote `blacry/PhishGuard` repository through GitHub. Its
+  default branch is `master`; the remote `.github/workflows/ci.yml` lookup
+  returned 404, and the Actions runs endpoint returned zero runs. Remote CI
+  recognition and execution are blocked until the workflow is present there.
+- Checked local Docker availability: the Docker CLI, Docker Desktop executable,
+  and `com.docker.service` are absent. The container image build remains
+  unverified.
+- Made no detector/scoring changes and did not commit. Existing uncommitted
+  changes and `data/scan_history.csv` were left untouched.
 

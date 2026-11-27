@@ -47,3 +47,26 @@ def test_loader_refuses_malformed_keyword_file(tmp_path):
         assert "Invalid keyword file" in str(exc)
     else:
         raise AssertionError("Malformed keyword data was accepted")
+
+
+def test_keyword_loader_refreshes_when_file_changes(tmp_path):
+    keyword_path = tmp_path / "keywords.csv"
+    keyword_path.write_text(
+        "category,keyword,weight,description\n"
+        "suspicious_url_words,first,10,first keyword\n",
+        encoding="utf-8",
+    )
+
+    assert load_category_keywords("suspicious_url_words", [], keyword_path) == [
+        "first"
+    ]
+
+    keyword_path.write_text(
+        "category,keyword,weight,description\n"
+        "suspicious_url_words,second,10,updated keyword description\n",
+        encoding="utf-8",
+    )
+
+    assert load_category_keywords("suspicious_url_words", [], keyword_path) == [
+        "second"
+    ]

@@ -1,0 +1,2 @@
+timestamp,input_type,input,risk_score,threat_level,indicators
+2026-11-27 13:58:00,url,phishme.tor,10,LOW,https_check
