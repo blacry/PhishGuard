@@ -1,1 +1,1 @@
-"""Local JSON scan history storage."""
+"""Local URLhaus database lookup helpers."""

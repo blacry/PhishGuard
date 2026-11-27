@@ -5,7 +5,3 @@ __pycache__/
 .runlogs/
 venv/
 .env
-.streamlit/secrets.toml
-database/scan_history.json
-*.pdf
-docs/
