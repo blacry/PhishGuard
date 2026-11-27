@@ -54,3 +54,4 @@ The app could support more database formats, show a manual database refresh work
 2. Check one URL known to be in the supplied dataset and show its exact-match record.
 3. Check a URL on a host with a different listed path and show the related-host warning.
 4. Check `https://example.com` and explain that “not listed” is not a safety guarantee.
+5. Open the safety tips panel and explain how users can verify links and avoid unexpected downloads.

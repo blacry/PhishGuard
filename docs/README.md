@@ -12,6 +12,7 @@ This project is a simple local database checker: it answers whether a URL is lis
 6. [Setup and operation](setup-and-operation.md)
 7. [Tests](testing.md)
 8. [Viva questions and answers](viva-questions.md)
+9. [Safety tips](safety-tips.md)
 
 ## Short viva summary
 

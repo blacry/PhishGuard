@@ -55,3 +55,16 @@ with st.expander("About this database"):
     st.write("This app uses the URLhaus CSV dump supplied with the project. URLhaus collects URLs associated with malware distribution.")
     st.write(f"Local file: `{DATABASE_FILE.relative_to(DATABASE_FILE.parents[1])}`")
     st.caption("The database is a snapshot and may become stale. This app only checks records present in that local file.")
+
+with st.expander("How to spot and avoid malware links"):
+    st.markdown("**Warning signs**")
+    st.markdown("- Unexpected urgency, threats, prizes, or requests to sign in can be clues.")
+    st.markdown("- Check the actual hostname carefully. A trusted brand name inside a longer hostname does not make that domain official.")
+    st.markdown("- Be cautious with shortened links, unexpected attachments, and download prompts.")
+    st.markdown("\n**Safer habits**")
+    st.markdown("- Open important services through their official app, a saved bookmark, or an address you type yourself.")
+    st.markdown("- Verify unexpected messages using a known phone number or official website; never share passwords or one-time codes from a message link.")
+    st.markdown("- Keep your operating system, browser, and security software updated. Do not run an unexpected downloaded file.")
+    st.markdown("- Report suspicious messages using your email or messaging app's report feature, then delete them.")
+    st.markdown("If you already ran a suspicious file or entered credentials, contact your IT/support team and change affected credentials from a trusted device.")
+    st.markdown("Sources: [CISA phishing tips](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Phishing-Tip-Sheet.pdf) · [CISA software update tips](https://www.cisa.gov/sites/default/files/2024-09/Secure-Our-World-Software-Updates-Tip-Sheet.pdf)")
