@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.uv-cache/
+.runlogs/
+venv/
+.env
+.streamlit/secrets.toml
+database/scan_history.json
+*.pdf
+docs/
